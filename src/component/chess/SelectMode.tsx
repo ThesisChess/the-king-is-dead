@@ -1,13 +1,15 @@
-import {Button} from '@rneui/themed';
 import React, {useState} from 'react';
+import {Button} from '@rneui/themed';
 import {Image, Text, TouchableOpacity, View} from 'react-native';
 import {BlackKingIcon, WhiteKingIcon} from '../../constant/image';
 
 type IProps = {
+  children?: React.ReactNode;
   onSubmit: (value: string) => void;
+  onCancel?: () => void;
 };
 
-const SelectMode = ({onSubmit}: IProps) => {
+const SelectMode = ({children, onSubmit, onCancel}: IProps) => {
   const [selected, setSelected] = useState<string | undefined>(undefined);
 
   return (
@@ -21,7 +23,7 @@ const SelectMode = ({onSubmit}: IProps) => {
         <View style={{alignItems: 'center'}}>
           <TouchableOpacity
             style={{
-              borderColor: selected === 'White' ? '#62B1A8' : '#070707',
+              borderColor: selected === 'White' ? '#F24141' : '#070707',
               borderWidth: 2,
               borderRadius: 10,
               padding: 5,
@@ -43,7 +45,7 @@ const SelectMode = ({onSubmit}: IProps) => {
         <View style={{alignItems: 'center', marginHorizontal: 10}}>
           <TouchableOpacity
             style={{
-              borderColor: selected === 'Random' ? '#62B1A8' : '#070707',
+              borderColor: selected === 'Random' ? '#F24141' : '#070707',
               borderWidth: 2,
               borderRadius: 10,
               padding: 5,
@@ -82,7 +84,7 @@ const SelectMode = ({onSubmit}: IProps) => {
         <View style={{alignItems: 'center'}}>
           <TouchableOpacity
             style={{
-              borderColor: selected === 'Black' ? '#62B1A8' : '#070707',
+              borderColor: selected === 'Black' ? '#F24141' : '#070707',
               borderWidth: 2,
               borderRadius: 10,
               padding: 5,
@@ -96,6 +98,8 @@ const SelectMode = ({onSubmit}: IProps) => {
         </View>
       </View>
 
+      {children}
+
       <View style={{marginTop: '5%', width: '100%'}}>
         <Button
           title="Submit"
@@ -104,21 +108,18 @@ const SelectMode = ({onSubmit}: IProps) => {
           }}
         />
       </View>
-      {/* 
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#62B1A8',
-          alignItems: 'center',
-          width: '100%',
-          padding: 10,
-          marginTop: 10,
-          borderRadius: 10,
-        }}
-        onPressIn={() => {
-          if (selected) onSubmit(selected);
-        }}>
-        <Text style={{color: '#ffff'}}>Submit</Text>
-      </TouchableOpacity> */}
+
+      {onCancel && (
+        <View style={{marginTop: '5%', width: '100%'}}>
+          <Button
+            title="Cancel"
+            type="outline"
+            onPress={() => {
+              onCancel();
+            }}
+          />
+        </View>
+      )}
     </>
   );
 };

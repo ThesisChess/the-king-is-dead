@@ -1,23 +1,37 @@
 import React, {useEffect, useRef, useState} from 'react';
-import Chessboard, {ChessboardRef} from 'react-native-chessboard';
 
 import useVoiceRecognition from '../../hook/use_voice_recognition';
 import Tts from 'react-native-tts';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
+import ChessboardContainer, {ChessboardRef} from '../../component/chess';
+import ChessGameUserDetails from '../../component/user/ChessGameUserDetails';
+import Modal from 'react-native-modal/dist/modal';
+import SelectMode from '../../component/chess/SelectMode';
 
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {styles} from '../../styles/container_style';
-import {Text, View} from 'react-native';
+import {SafeAreaView, Text, View} from 'react-native';
 import {checker} from '../../utils/move_checker';
-import {Button, Header} from '@rneui/themed';
-import ChessGameUserDetails from '../../component/user/ChessGameUserDetails';
+import {Button, CheckBox, Header} from '@rneui/themed';
 
 type IProps = {
   navigation: any;
 };
 
 const Chess = ({navigation}: IProps) => {
-  const [, setPlayer] = useState<'w' | 'b'>('w');
+  const countdownRefPlayer1 = useRef<any>(null);
+  const countdownRefPlayer2 = useRef<any>(null);
+
+  const [player, setPlayer] = useState<'w' | 'b' | undefined>(undefined); //state for player type
+  const [visibleMode, selectVisibleMode] = useState<boolean>(true); //select mode visibility
+  const [gameOrientation, setGameOrientation] = useState(false);
+
+  const [playerPosition, setPlayerPosition] = useState<
+    {
+      color: 'w' | 'b';
+      position: 'top' | 'bottom';
+    }[]
+  >();
 
   const chessboardRef = useRef<ChessboardRef>(null);
   const {
@@ -51,26 +65,26 @@ const Chess = ({navigation}: IProps) => {
               } else Tts.speak(`Invalid Move`);
             })();
           } else {
-            // data.map(first => {
-            //   data.map(second => {
-            //     const move: any = {
-            //       from: first.toLowerCase(),
-            //       to: second.toLowerCase(),
-            //     };
-            //     (async () => {
-            //       const moved = await chessboardRef.current?.move(move);
-            //       console.log('move', move);
-            //       if (moved) {
-            //         Tts.speak(`${move.from} to ${move.to}`);
+            data.map(first => {
+              data.map(second => {
+                const move: any = {
+                  from: first.toLowerCase(),
+                  to: second.toLowerCase(),
+                };
+                (async () => {
+                  const moved = await chessboardRef.current?.move(move);
+                  console.log('move', move);
+                  if (moved) {
+                    Tts.speak(`${move.from} to ${move.to}`);
 
-            //         Tts.speak(
-            //           moved.color === 'w' ? 'Black Turn' : 'White Turn',
-            //         );
-            //       }
-            //     })();
-            //   });
-            // });
-            Tts.speak(`Invalid Move`);
+                    Tts.speak(
+                      moved.color === 'w' ? 'Black Turn' : 'White Turn',
+                    );
+                  }
+                })();
+              });
+            });
+            // Tts.speak(`Invalid Move`);
           }
         } else {
           Tts.speak(`Invalid Move`);
@@ -92,6 +106,63 @@ const Chess = ({navigation}: IProps) => {
 
   return (
     <>
+      <Modal isVisible={visibleMode}>
+        <SafeAreaView
+          style={{
+            alignItems: 'center',
+            backgroundColor: '#ffff',
+            borderRadius: 10,
+            padding: 20,
+          }}>
+          <SelectMode
+            onSubmit={val => {
+              //function on select of the player type
+              let newVal: any = undefined;
+
+              if (val === 'Random') {
+                // Random Picker for player type
+                let playerType = ['White', 'Black'];
+
+                const randomIdx = Math.floor(Math.random() * playerType.length);
+                const type = playerType[randomIdx];
+
+                newVal = type;
+              }
+
+              const result: any = ['w', 'b'].map((x: any) => {
+                return {
+                  color: x,
+                  position:
+                    newVal?.charAt(0)?.toLowerCase() === x ||
+                    val?.charAt(0)?.toLowerCase() === x
+                      ? 'bottom'
+                      : 'top',
+                };
+              });
+
+              setPlayerPosition(result);
+
+              setPlayer(newVal === 'White' || val === 'White' ? 'w' : 'b');
+              selectVisibleMode(false);
+            }}
+            onCancel={() => {
+              navigation.goBack();
+            }}>
+            {/* <CheckBox
+              checked={gameOrientation}
+              onPress={() => {
+                setGameOrientation(!gameOrientation);
+              }}
+              title="Game Orientation on move"
+              iconType="material-community"
+              checkedIcon="checkbox-marked"
+              uncheckedIcon="checkbox-blank-outline"
+              checkedColor="red"
+            /> */}
+          </SelectMode>
+        </SafeAreaView>
+      </Modal>
+
       <Header
         style={{alignContent: 'center', alignItems: 'center'}}
         leftComponent={{
@@ -114,43 +185,66 @@ const Chess = ({navigation}: IProps) => {
         <View style={styles.chess_center_and_middle}>
           <View style={{marginBottom: '5%'}}>
             <ChessGameUserDetails
+              ref={countdownRefPlayer2}
+              initialSeconds={300}
               player="Player 2"
-              name="David Dylan"
-              image="https://randomuser.me/api/portraits/men/36.jpg"
+              name="Player"
             />
           </View>
-          <Chessboard
+          <ChessboardContainer
             ref={chessboardRef}
             gestureEnabled={true}
+            orientation={player}
             colors={{black: '#f24141', white: '#f4a759'}}
             onMove={({state, move}) => {
               //This function handle the move and state
-              if (move.color) setPlayer(move.color === 'b' ? 'w' : 'b');
+              console.log(playerPosition);
+              if (playerPosition) {
+                const index = playerPosition.findIndex(
+                  x => x.color === move.color,
+                );
 
-              if (state.in_checkmate) {
+                if (index >= 0) {
+                  const data = playerPosition[index];
+
+                  if (data.position === 'top') {
+                    countdownRefPlayer1.current.resume();
+                    countdownRefPlayer2.current.pause();
+                  } else {
+                    countdownRefPlayer2.current.resume();
+                    countdownRefPlayer1.current.pause();
+                  }
+                }
+              }
+
+              if (gameOrientation)
+                if (move.color) setPlayer(move.color === 'b' ? 'w' : 'b');
+
+              if (state.isCheckmate) {
                 return Tts.speak(
                   move.color === 'w' ? 'Checkmate Black' : 'Checkmate White',
                 );
               }
 
-              if (state.in_check) {
+              if (state.inCheck) {
                 Tts.speak(move.color === 'w' ? 'Check Black' : 'Check White');
               }
 
-              if (state.in_stalemate) {
+              if (state.isStalemate) {
                 return Tts.speak('Stalemate');
               }
 
-              if (state.in_draw) {
+              if (state.isDraw) {
                 return Tts.speak('Draw');
               }
             }}
           />
           <View style={{marginTop: '5%'}}>
             <ChessGameUserDetails
+              ref={countdownRefPlayer1}
+              initialSeconds={300}
               player="Player 1"
-              name="Christian Adam"
-              image="https://randomuser.me/api/portraits/men/35.jpg"
+              name="Player"
             />
           </View>
         </View>
@@ -163,9 +257,8 @@ const Chess = ({navigation}: IProps) => {
                   await _startRecognizing();
                 })();
               } else {
-                console.log('Test');
-
                 _destroyRecognizer();
+
                 (async () => {
                   await _stopRecognizing();
                   await _cancelRecognizing();

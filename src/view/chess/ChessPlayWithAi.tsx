@@ -1,5 +1,4 @@
 import React, {useEffect, useRef, useState} from 'react';
-import Chessboard, {ChessboardRef} from 'react-native-chessboard';
 
 import randomMove from '../../common/ai/random_move';
 import Tts from 'react-native-tts';
@@ -14,14 +13,30 @@ import {styles} from '../../styles/container_style';
 import {SafeAreaView, Text, View} from 'react-native';
 import {Button, Header} from '@rneui/themed';
 import {checker} from '../../utils/move_checker';
+import ChessboardContainer, {ChessboardRef} from '../../component/chess';
 
 type IProps = {
   navigation: any;
 };
 
 const ChessPlayWithAi = ({navigation}: IProps) => {
+  const countdownRefPlayer1 = useRef<any>(null);
+  const countdownRefPlayer2 = useRef<any>(null);
+
+  const [playerPosition, setPlayerPosition] = useState<
+    {
+      color: 'w' | 'b';
+      position: 'top' | 'bottom';
+    }[]
+  >();
+
   const [player, setPlayer] = useState<'w' | 'b' | undefined>(undefined); //state for player type
   const [visibleMode, selectVisibleMode] = useState<boolean>(true); //select mode visibility
+  const [gameOver, setGameOver] = useState<{
+    gameOver: boolean;
+    type: string;
+    label: string;
+  }>({gameOver: false} as any);
 
   const chessboardRef = useRef<ChessboardRef>(null);
 
@@ -70,25 +85,25 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
               } else Tts.speak(`Invalid Move`);
             })();
           } else {
-            // data.map(first => {
-            //   data.map(second => {
-            //     const move: any = {
-            //       from: first.toLowerCase(),
-            //       to: second.toLowerCase(),
-            //     };
-            //     (async () => {
-            //       const moved = await chessboardRef.current?.move(move);
-            //       console.log('move', move);
-            //       if (moved) {
-            //         Tts.speak(`${move.from} to ${move.to}`);
+            data.map(first => {
+              data.map(second => {
+                const move: any = {
+                  from: first.toLowerCase(),
+                  to: second.toLowerCase(),
+                };
+                (async () => {
+                  const moved = await chessboardRef.current?.move(move);
+                  console.log('move', move);
+                  if (moved) {
+                    Tts.speak(`${move.from} to ${move.to}`);
 
-            //         Tts.speak(
-            //           moved.color === 'w' ? 'Black Turn' : 'White Turn',
-            //         );
-            //       }
-            //     })();
-            //   });
-            // });
+                    Tts.speak(
+                      moved.color === 'w' ? 'Black Turn' : 'White Turn',
+                    );
+                  }
+                })();
+              });
+            });
             Tts.speak(`Invalid Move`);
           }
         } else {
@@ -108,6 +123,7 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
   useEffect(() => {
     voiceCommandMove();
   }, [results]);
+
   return (
     <>
       <Modal isVisible={visibleMode}>
@@ -121,8 +137,7 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
           <SelectMode
             onSubmit={val => {
               //function on select of the player type
-
-              let newVal = undefined;
+              let newVal: any = undefined;
 
               if (val === 'Random') {
                 // Random Picker for player type
@@ -140,11 +155,36 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
                   'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
                 );
 
+              const result: any = ['w', 'b'].map((x: any) => {
+                return {
+                  color: x,
+                  position:
+                    newVal?.charAt(0)?.toLowerCase() === x ||
+                    val?.charAt(0)?.toLowerCase() === x
+                      ? 'bottom'
+                      : 'top',
+                };
+              });
+
+              setPlayerPosition(result);
               setPlayer(newVal === 'White' || val === 'White' ? 'w' : 'b');
               selectVisibleMode(false);
             }}
+            onCancel={() => {
+              navigation.goBack();
+            }}
           />
         </SafeAreaView>
+      </Modal>
+
+      <Modal isVisible={gameOver.gameOver}>
+        <SafeAreaView
+          style={{
+            alignItems: 'center',
+            backgroundColor: '#ffff',
+            borderRadius: 10,
+            padding: 20,
+          }}></SafeAreaView>
       </Modal>
       <Header
         style={{alignContent: 'center', alignItems: 'center'}}
@@ -164,27 +204,46 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
         }}
         centerComponent={{text: 'Play with AI', style: {color: '#ffff'}}}
       />
-      <GestureHandlerRootView
-        style={[
-          styles.container_center_and_middle,
-          {transform: [{rotate: player === 'b' ? '180deg' : '360deg'}]},
-        ]}>
+      <GestureHandlerRootView style={[styles.container_center_and_middle]}>
         <View style={styles.chess_center_and_middle}>
           <View style={{marginBottom: '5%'}}>
             <ChessGameUserDetails
-              player="Player 2"
-              name="David Dylan"
-              image="https://randomuser.me/api/portraits/men/36.jpg"
+              ref={countdownRefPlayer2}
+              initialSeconds={300}
+              player="AI"
+              name="Computer"
+              image={require('../../assets/image/robot.png')}
             />
           </View>
-          <Chessboard
+
+          <ChessboardContainer
             ref={chessboardRef}
             gestureEnabled={true}
-            durations={{move: 500}}
+            orientation={player}
             colors={{black: '#f24141', white: '#f4a759'}}
             onMove={val => {
               //This function handle the move and state
-              if (val.state.in_checkmate) {
+              console.log(playerPosition);
+              if (playerPosition) {
+                const index = playerPosition.findIndex(
+                  x => x.color === val.move.color,
+                );
+
+                if (index >= 0) {
+                  const data = playerPosition[index];
+                  console.log('data', data);
+
+                  if (data.position === 'top') {
+                    countdownRefPlayer1.current.resume();
+                    countdownRefPlayer2.current.pause();
+                  } else {
+                    countdownRefPlayer2.current.resume();
+                    countdownRefPlayer1.current.pause();
+                  }
+                }
+              }
+
+              if (val.state.isCheckmate) {
                 return Tts.speak(
                   val.move.color === 'w'
                     ? 'Checkmate Black'
@@ -192,17 +251,17 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
                 );
               }
 
-              if (val.state.in_check) {
+              if (val.state.inCheck) {
                 Tts.speak(
                   val.move.color === 'w' ? 'Check Black' : 'Check White',
                 );
               }
 
-              if (val.state.in_stalemate) {
+              if (val.state.isStalemate) {
                 return Tts.speak('Stalemate');
               }
 
-              if (val.state.in_draw) {
+              if (val.state.isDraw) {
                 return Tts.speak('Draw');
               }
 
@@ -213,9 +272,10 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
           />
           <View style={{marginTop: '5%'}}>
             <ChessGameUserDetails
+              ref={countdownRefPlayer1}
+              initialSeconds={300}
               player="Player 1"
-              name="Christian Adam"
-              image="https://randomuser.me/api/portraits/men/35.jpg"
+              name="Player"
             />
           </View>
         </View>

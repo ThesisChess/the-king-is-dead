@@ -1,23 +1,28 @@
 import React, {useEffect, useRef, useState} from 'react';
-import Chessboard, {ChessboardRef} from 'react-native-chessboard';
+import Chessboard from 'react-native-chessboard';
 
 import useVoiceRecognition from '../../hook/use_voice_recognition';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import ChessGameUserDetails from '../../component/user/ChessGameUserDetails';
 import Tts from 'react-native-tts';
 
-import {Text, View} from 'react-native';
+import {SafeAreaView, Text, View} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {checker} from '../../utils/move_checker';
 import {styles} from '../../styles/container_style';
 import {Button, Header} from '@rneui/themed';
+import ChessboardContainer, {ChessboardRef} from '../../component/chess';
+import {PromotionDialog} from '../../component/chess/context/board-promotion-context/dialog';
+import Modal from 'react-native-modal/dist/modal';
+import SelectMode from '../../component/chess/SelectMode';
 
 type IProps = {
   navigation: any;
 };
 
 const ChessPlayOnline = ({navigation}: IProps) => {
-  const [, setPlayer] = useState<'w' | 'b'>('w');
+  const [player, setPlayer] = useState<'w' | 'b' | undefined>(undefined); //state for player type
+  const [visibleMode, selectVisibleMode] = useState<boolean>(true); //select mode visibility
 
   const chessboardRef = useRef<ChessboardRef>(null);
   const {
@@ -51,25 +56,25 @@ const ChessPlayOnline = ({navigation}: IProps) => {
               } else Tts.speak(`Invalid Move`);
             })();
           } else {
-            // data.map(first => {
-            //   data.map(second => {
-            //     const move: any = {
-            //       from: first.toLowerCase(),
-            //       to: second.toLowerCase(),
-            //     };
-            //     (async () => {
-            //       const moved = await chessboardRef.current?.move(move);
-            //       console.log('move', move);
-            //       if (moved) {
-            //         Tts.speak(`${move.from} to ${move.to}`);
+            data.map(first => {
+              data.map(second => {
+                const move: any = {
+                  from: first.toLowerCase(),
+                  to: second.toLowerCase(),
+                };
+                (async () => {
+                  const moved = await chessboardRef.current?.move(move);
+                  console.log('move', move);
+                  if (moved) {
+                    Tts.speak(`${move.from} to ${move.to}`);
 
-            //         Tts.speak(
-            //           moved.color === 'w' ? 'Black Turn' : 'White Turn',
-            //         );
-            //       }
-            //     })();
-            //   });
-            // });
+                    Tts.speak(
+                      moved.color === 'w' ? 'Black Turn' : 'White Turn',
+                    );
+                  }
+                })();
+              });
+            });
             Tts.speak(`Invalid Move`);
           }
         } else {
@@ -92,6 +97,38 @@ const ChessPlayOnline = ({navigation}: IProps) => {
 
   return (
     <>
+      <Modal isVisible={visibleMode}>
+        <SafeAreaView
+          style={{
+            alignItems: 'center',
+            backgroundColor: '#ffff',
+            borderRadius: 10,
+            padding: 20,
+          }}>
+          <SelectMode
+            onSubmit={val => {
+              let newVal = undefined;
+
+              if (val === 'Random') {
+                // Random Picker for player type
+                let playerType = ['White', 'Black'];
+
+                const randomIdx = Math.floor(Math.random() * playerType.length);
+                const type = playerType[randomIdx];
+
+                newVal = type;
+              }
+
+              setPlayer(newVal === 'White' || val === 'White' ? 'w' : 'b');
+              selectVisibleMode(false);
+            }}
+            onCancel={() => {
+              navigation.goBack();
+            }}
+          />
+        </SafeAreaView>
+      </Modal>
+
       <Header
         style={{alignContent: 'center', alignItems: 'center'}}
         leftComponent={{
@@ -117,40 +154,44 @@ const ChessPlayOnline = ({navigation}: IProps) => {
               player="Player 2"
               name="David Dylan"
               image="https://randomuser.me/api/portraits/men/36.jpg"
+              isStart={false}
             />
           </View>
-          <Chessboard
+          <ChessboardContainer
             ref={chessboardRef}
             gestureEnabled={true}
+            orientation={player}
             colors={{black: '#f24141', white: '#f4a759'}}
             onMove={({state, move}) => {
               //This function handle the move and state
               if (move.color) setPlayer(move.color === 'b' ? 'w' : 'b');
 
-              if (state.in_checkmate) {
+              if (state.isCheckmate) {
                 return Tts.speak(
                   move.color === 'w' ? 'Checkmate Black' : 'Checkmate White',
                 );
               }
 
-              if (state.in_check) {
+              if (state.inCheck) {
                 Tts.speak(move.color === 'w' ? 'Check Black' : 'Check White');
               }
 
-              if (state.in_stalemate) {
+              if (state.isStalemate) {
                 return Tts.speak('Stalemate');
               }
 
-              if (state.in_draw) {
+              if (state.isDraw) {
                 return Tts.speak('Draw');
               }
             }}
           />
+
           <View style={{marginTop: '5%'}}>
             <ChessGameUserDetails
               player="Player 1"
               name="Christian Adam"
               image="https://randomuser.me/api/portraits/men/35.jpg"
+              isStart={true}
             />
           </View>
         </View>
