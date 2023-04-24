@@ -10,10 +10,11 @@ import useVoiceRecognition from '../../hook/use_voice_recognition';
 
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {styles} from '../../styles/container_style';
-import {SafeAreaView, Text, View} from 'react-native';
+import {Image, SafeAreaView, Text, TouchableOpacity, View} from 'react-native';
 import {Button, Header} from '@rneui/themed';
 import {checker} from '../../utils/move_checker';
 import ChessboardContainer, {ChessboardRef} from '../../component/chess';
+import {pieces} from '../../utils/piece';
 
 type IProps = {
   navigation: any;
@@ -29,17 +30,24 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
       position: 'top' | 'bottom';
     }[]
   >();
+  const [onEndGame, selectOnEndGame] = useState<{
+    isGameEnd: boolean;
+    isWinner?: 'w' | 'b';
+    message?: string;
+  }>({isGameEnd: false}); //select mode visibility
 
   const [player, setPlayer] = useState<'w' | 'b' | undefined>(undefined); //state for player type
   const [visibleMode, selectVisibleMode] = useState<boolean>(true); //select mode visibility
-  const [gameOver, setGameOver] = useState<{
-    gameOver: boolean;
-    type: string;
-    label: string;
-  }>({gameOver: false} as any);
 
   const chessboardRef = useRef<ChessboardRef>(null);
-
+  const {isStarted, _startRecognizing, _stopRecognizing} = useVoiceRecognition({
+    speechVolume: false,
+    callbacks: {
+      onSpeechResults: e => {
+        voiceCommandMove(e);
+      },
+    },
+  }); //Voice Command Hook
   const randomAiMove = (fen: string) => {
     //handle the move randomly
     (async () => {
@@ -47,23 +55,18 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
       const data = await randomMove(fen);
 
       //handle the piece to move
-      await chessboardRef.current?.move({
-        from: data.from.toLowerCase(),
-        to: data.to.toLowerCase(),
-      } as any);
+      setTimeout(async () => {
+        await chessboardRef.current?.move({
+          from: data.from.toLowerCase(),
+          to: data.to.toLowerCase(),
+        } as any);
+      }, 1500);
     })();
   };
 
-  const {
-    results,
-    isStarted,
-    _startRecognizing,
-    _stopRecognizing,
-    _cancelRecognizing,
-    _destroyRecognizer,
-  } = useVoiceRecognition({speechVolume: false}); //Voice Command Hook
+  const voiceCommandMove = (results: any) => {
+    _stopRecognizing();
 
-  const voiceCommandMove = () => {
     if (results)
       // check the voice recognition if not null
       (async () => {
@@ -112,6 +115,19 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
       })();
   };
 
+  const handleOnEndTime = (position: 'top' | 'bottom') => {
+    const result = playerPosition?.find(
+      x => x.position.toLocaleLowerCase() === position.toLocaleLowerCase(),
+    );
+
+    if (result)
+      selectOnEndGame({
+        isGameEnd: true,
+        isWinner: result?.color,
+        message: 'King is Dead',
+      });
+  };
+
   useEffect(() => {
     Tts.speak(`Play With AI`);
 
@@ -121,8 +137,15 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
   }, []);
 
   useEffect(() => {
-    voiceCommandMove();
-  }, [results]);
+    if (onEndGame.isGameEnd) {
+      if (onEndGame?.message) Tts.speak(onEndGame?.message);
+      Tts.speak(`Press the screen to close the game`);
+    }
+
+    return () => {
+      Tts.stop();
+    };
+  }, [onEndGame.isGameEnd]);
 
   return (
     <>
@@ -177,15 +200,40 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
         </SafeAreaView>
       </Modal>
 
-      <Modal isVisible={gameOver.gameOver}>
-        <SafeAreaView
+      <Modal isVisible={onEndGame.isGameEnd}>
+        <TouchableOpacity
           style={{
-            alignItems: 'center',
-            backgroundColor: '#ffff',
-            borderRadius: 10,
-            padding: 20,
-          }}></SafeAreaView>
+            flex: 1,
+            justifyContent: 'center',
+            alignContent: 'center',
+          }}
+          onPress={() => {
+            navigation.navigate('Home');
+          }}>
+          <Image
+            style={[
+              {
+                width: 250,
+                height: 250,
+                justifyContent: 'center',
+                alignSelf: 'center',
+              },
+            ]}
+            source={require('../../assets/image/game-over-icon.png')}
+          />
+          <View>
+            <Text style={{textAlign: 'center', color: '#ffff', fontSize: 20}}>
+              {onEndGame.message}
+            </Text>
+          </View>
+          <View>
+            <Text style={{textAlign: 'center', color: '#ffff'}}>
+              Press the screen to close the game
+            </Text>
+          </View>
+        </TouchableOpacity>
       </Modal>
+
       <Header
         style={{alignContent: 'center', alignItems: 'center'}}
         leftComponent={{
@@ -209,10 +257,13 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
           <View style={{marginBottom: '5%'}}>
             <ChessGameUserDetails
               ref={countdownRefPlayer2}
-              initialSeconds={300}
+              seconds={300}
               player="AI"
               name="Computer"
               image={require('../../assets/image/robot.png')}
+              onEnd={() => {
+                console.log('onEnd', playerPosition);
+              }}
             />
           </View>
 
@@ -223,20 +274,40 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
             colors={{black: '#f24141', white: '#f4a759'}}
             onMove={val => {
               //This function handle the move and state
-              console.log(playerPosition);
-              if (playerPosition) {
-                const index = playerPosition.findIndex(
-                  x => x.color === val.move.color,
-                );
+              const index = playerPosition?.findIndex(
+                x => x.color === val.move.color,
+              );
 
-                if (index >= 0) {
+              const pieceType = pieces.find(x => x.key === val.move.piece);
+
+              if (val.move.captured) {
+                const pieceCapturedType = pieces.find(
+                  x => x.key === val.move.captured,
+                );
+                Tts.speak(
+                  `${pieceType?.type} ${
+                    val.move.color === 'w' ? 'white' : 'black'
+                  } captured ${pieceCapturedType?.type} ${
+                    val.move.color !== 'w' ? 'white' : 'black'
+                  }`,
+                );
+              } else {
+                Tts.speak(
+                  `${pieceType?.type} ${
+                    val.move.color === 'w' ? 'white' : 'black'
+                  } move to ${val.move.to}`,
+                );
+              }
+
+              if (playerPosition) {
+                if (index != undefined && index >= 0) {
                   const data = playerPosition[index];
-                  console.log('data', data);
 
                   if (data.position === 'top') {
                     countdownRefPlayer1.current.resume();
                     countdownRefPlayer2.current.pause();
                   } else {
+                    console.log('bottom');
                     countdownRefPlayer2.current.resume();
                     countdownRefPlayer1.current.pause();
                   }
@@ -244,25 +315,36 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
               }
 
               if (val.state.isCheckmate) {
-                return Tts.speak(
-                  val.move.color === 'w'
-                    ? 'Checkmate Black'
-                    : 'Checkmate White',
-                );
+                return selectOnEndGame({
+                  isGameEnd: true,
+                  isWinner: val.move.color,
+                  message:
+                    val.move.color === 'w'
+                      ? 'Checkmate Black'
+                      : 'Checkmate White',
+                });
               }
 
               if (val.state.inCheck) {
-                Tts.speak(
+                return Tts.speak(
                   val.move.color === 'w' ? 'Check Black' : 'Check White',
                 );
               }
 
               if (val.state.isStalemate) {
-                return Tts.speak('Stalemate');
+                return selectOnEndGame({
+                  isGameEnd: true,
+                  isWinner: val.move.color,
+                  message: 'Stalemate',
+                });
               }
 
               if (val.state.isDraw) {
-                return Tts.speak('Draw');
+                return selectOnEndGame({
+                  isGameEnd: true,
+                  isWinner: val.move.color,
+                  message: 'Draw',
+                });
               }
 
               if (player && val.move.color === player) {
@@ -273,9 +355,12 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
           <View style={{marginTop: '5%'}}>
             <ChessGameUserDetails
               ref={countdownRefPlayer1}
-              initialSeconds={300}
+              seconds={300}
               player="Player 1"
               name="Player"
+              onEnd={() => {
+                console.log('onEnd', playerPosition);
+              }}
             />
           </View>
         </View>
@@ -285,17 +370,9 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
             title="Settings"
             onPress={() => {
               if (!isStarted) {
-                (async () => {
-                  await _startRecognizing();
-                })();
+                _startRecognizing();
               } else {
-                console.log('Test');
-
-                _destroyRecognizer();
-                (async () => {
-                  await _stopRecognizing();
-                  await _cancelRecognizing();
-                })();
+                _stopRecognizing();
               }
             }}
             buttonStyle={{

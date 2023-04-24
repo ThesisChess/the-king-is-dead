@@ -1,22 +1,16 @@
-import React, {forwardRef, useEffect, useRef} from 'react';
-
-import useCountdownTimer from '../../hook/use_countdown_timer';
-// import Timer from '../timer/Timer';
-
+import React, {forwardRef} from 'react';
 import {Avatar} from '@rneui/base';
 import {Text, View} from 'react-native';
-import {Countdown} from 'react-native-element-timer';
-import {CountDownProps} from 'react-native-element-timer/lib/typescript/CountDown/model';
+import Countdown, {CountdownProps} from '../timer/Countdown';
 
 type IProps = {
   player: string;
   name: string;
   image?: string;
-} & CountDownProps &
-  React.RefAttributes<any>;
+} & CountdownProps;
 
 const ChessGameUserDetails = forwardRef(
-  ({player, name, image, ...props}: IProps, ref) => {
+  ({player, name, image, ...props}: IProps, ref: any) => {
     return (
       <>
         <View
@@ -59,21 +53,25 @@ const ChessGameUserDetails = forwardRef(
               <Text>{name}</Text>
             </View>
           </View>
-          <Countdown
-            ref={ref}
-            style={{
-              marginLeft: '5%',
-              padding: '3%',
-              borderRadius: 10,
-              backgroundColor: '#F24141',
-            }}
-            textStyle={{
-              fontSize: 15,
-              fontWeight: 'bold',
-              color: '#ffff',
-            }}
-            {...props}
-          />
+
+          <View>
+            <Countdown
+              ref={ref}
+              style={{
+                paddingVertical: '5%',
+                paddingHorizontal: '2%',
+                borderRadius: 5,
+                backgroundColor: '#F24141',
+              }}
+              textStyle={{
+                textAlign: 'center',
+                fontSize: 12,
+                fontWeight: 'bold',
+                color: '#ffff',
+              }}
+              {...props}
+            />
+          </View>
         </View>
       </>
     );

@@ -1,53 +1,73 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Tts from 'react-native-tts';
+import useVoiceRecognition from '../../hook/use_voice_recognition';
 
 import {Image, View} from 'react-native';
 import {Text} from '@rneui/base';
 import {styles} from '../../styles/container_style';
 import {Button} from '@rneui/themed';
 import {UserFirebaseController} from '../../../config/user.firebase';
-import useVoiceRecognition from '../../hook/use_voice_recognition';
 import {IUserRequest} from '../../../config/model/user/user.request';
-import Tts from 'react-native-tts';
+import {SpeechResultsEvent} from '@react-native-voice/voice';
 
 type IProps = {
   navigation: any;
 };
 
 const CreateUser = ({navigation}: IProps) => {
-  const [name, setName] = useState<string>();
   const {createUser} = new UserFirebaseController();
 
-  const {
-    results,
-    partialResults,
-    isStarted,
-    _startRecognizing,
-    _stopRecognizing,
-    _cancelRecognizing,
-    _destroyRecognizer,
-  } = useVoiceRecognition({speechVolume: false}); //Voice Command Hook
+  const [name, setName] = useState<string>();
+  const isNameSetRef = useRef<boolean>(false);
 
-  const handleCreate = async () => {
+  const {isStarted, _startRecognizing, _stopRecognizing} = useVoiceRecognition({
+    speechVolume: false,
+    callbacks: {
+      onSpeechResults: (e, partialResults) => {
+        console.log('onSpeechResults', e.value);
+        console.log('onSpeechResults', partialResults);
+        console.log('onSpeechResults', name);
+
+        if (!isNameSetRef.current) {
+          if (e?.value) {
+            handleCreate(e?.value[0]);
+            isNameSetRef.current = true;
+          }
+        } else {
+          const res = e?.value?.join(' ');
+          if (res?.toLocaleLowerCase().includes('home'))
+            navigation.navigate('Home');
+
+          if (res?.toLocaleLowerCase().includes('settings'))
+            navigation.navigate('Settings');
+        }
+      },
+    },
+  });
+
+  const handleCreate = async (partialResults: string) => {
     const data = {
       elo_rating: 0,
       is_visually_impaired: true,
-      name: partialResults?.value?.toString(),
+      name: partialResults,
       photo: '',
       created_at: new Date(),
     } as IUserRequest;
 
     await createUser(data).then(async () => {
-      setName(data?.name);
+      setName(data.name);
+
       await AsyncStorage.setItem('@player', JSON.stringify(data));
     });
   };
 
   useEffect(() => {
-    Tts.speak(
-      'Hello, welcome to world of king is dead. Please state your name...',
-    );
+    if (!isNameSetRef.current)
+      Tts.speak(
+        'Hello, welcome to world of king is dead. Please state your name...',
+      );
 
     return () => {
       Tts.stop();
@@ -55,31 +75,15 @@ const CreateUser = ({navigation}: IProps) => {
   }, []);
 
   useEffect(() => {
-    if (name)
-      Tts.speak(`
-      Hello, ${name}. Please say "Home" to begin the game.
-      If you need assistance, please say "Settings" to review how to play
-      King Is Dead`);
+    if (isNameSetRef.current)
+      Tts.speak(
+        `Hello, ${name}. Please say "Home" to begin the game. If you need assistance, please say "Settings" to review how to play King Is Dead`,
+      );
 
     return () => {
       Tts.stop();
     };
   }, [name]);
-
-  useEffect(() => {
-    if (!name)
-      (async () => {
-        if (partialResults?.value) await handleCreate();
-      })();
-    else {
-      const res = results?.value?.join(' ');
-      if (res?.toLocaleLowerCase().includes('home'))
-        navigation.navigate('Home');
-
-      if (res?.toLocaleLowerCase().includes('settings'))
-        navigation.navigate('Settings');
-    }
-  }, [results]);
 
   return (
     <View
@@ -164,15 +168,9 @@ const CreateUser = ({navigation}: IProps) => {
           title="Settings"
           onPress={() => {
             if (!isStarted) {
-              (async () => {
-                await _startRecognizing();
-              })();
+              _startRecognizing();
             } else {
-              _destroyRecognizer();
-              (async () => {
-                await _stopRecognizing();
-                await _cancelRecognizing();
-              })();
+              _stopRecognizing();
             }
           }}
           buttonStyle={{

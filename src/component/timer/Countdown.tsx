@@ -1,63 +1,77 @@
-import React, {useState, useEffect, useRef} from 'react';
-import {View, Text, Button} from 'react-native';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
+import {StyleProp, Text, TextStyle, View, ViewStyle} from 'react-native';
 
-interface CountdownProps {
-  initialTimeInSeconds: number;
-  onComplete: () => void;
-}
-
-const Countdown: React.FC<CountdownProps> = ({
-  initialTimeInSeconds,
-  onComplete,
-}) => {
-  const [remainingTime, setRemainingTime] = useState(initialTimeInSeconds);
-  const [isRunning, setIsRunning] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = setInterval(() => {
-        setRemainingTime(prevTime => {
-          if (prevTime === 0) {
-            clearInterval(intervalRef.current!);
-            setIsRunning(false);
-            onComplete();
-            return prevTime;
-          }
-          return prevTime - 1;
-        });
-      }, 1000);
-    } else {
-      clearInterval(intervalRef.current!);
-    }
-    return () => clearInterval(intervalRef.current!);
-  }, [isRunning, onComplete]);
-
-  const handleStart = () => setIsRunning(true);
-  const handleStop = () => setIsRunning(false);
-  const handleReset = () => {
-    clearInterval(intervalRef.current!);
-    setIsRunning(false);
-    setRemainingTime(initialTimeInSeconds);
-  };
-
-  const minutes = Math.floor(remainingTime / 60);
-  const seconds = remainingTime % 60;
-
-  return (
-    <View>
-      <Text>{`${minutes.toString().padStart(2, '0')}:${seconds
-        .toString()
-        .padStart(2, '0')}`}</Text>
-      {!isRunning && remainingTime !== initialTimeInSeconds && (
-        <Button title="Reset" onPress={handleReset} />
-      )}
-      {!isRunning && remainingTime === initialTimeInSeconds && (
-        <Button title="Start" onPress={handleStart} />
-      )}
-      {isRunning && <Button title="Stop" onPress={handleStop} />}
-    </View>
-  );
+export type CountdownProps = {
+  seconds: number;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  onEnd: () => void;
 };
+
+type CountdownRef = {
+  resume: () => void;
+  pause: () => void;
+};
+
+const Countdown = forwardRef<CountdownRef, CountdownProps>(
+  ({seconds, style, textStyle, onEnd}: CountdownProps, ref) => {
+    const [timeLeft, setTimeLeft] = useState(seconds);
+    const [paused, setPaused] = useState(false);
+    const [start, setStart] = useState(false);
+    const [ended, setEnded] = useState(false); // new state variable
+    const intervalRef = useRef<NodeJS.Timeout>();
+
+    useEffect(() => {
+      if (timeLeft <= 0 && !ended) {
+        // check if countdown has not already ended
+        clearInterval(intervalRef.current!);
+        setEnded(true); // mark countdown as ended
+        onEnd();
+      }
+    }, [timeLeft, onEnd, ended]);
+
+    useEffect(() => {
+      if (start) {
+        intervalRef.current = setInterval(() => {
+          if (!paused) {
+            setTimeLeft(prevTimeLeft => prevTimeLeft - 1);
+          }
+        }, 1000);
+      }
+
+      return () => clearInterval(intervalRef.current!);
+    }, [start, paused]);
+
+    useImperativeHandle(ref, () => ({
+      resume: () => {
+        setPaused(false);
+        setStart(true);
+      },
+      pause: () => {
+        setPaused(true);
+      },
+    }));
+
+    const getFormattedTime = (time: number) => {
+      const minutes = Math.floor(time / 60)
+        .toString()
+        .padStart(2, '0');
+      const seconds = (time % 60).toString().padStart(2, '0');
+      return `${minutes}:${seconds}`;
+    };
+
+    return (
+      <View style={style}>
+        <Text style={textStyle}>{getFormattedTime(timeLeft)}</Text>
+      </View>
+    );
+  },
+);
 
 export default Countdown;

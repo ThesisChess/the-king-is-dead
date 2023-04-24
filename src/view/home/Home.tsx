@@ -16,14 +16,24 @@ type IProps = {
 const Home = ({navigation}: IProps) => {
   const [player, setPlayer] = useState<IUserRequest | undefined>();
 
-  const {
-    results,
-    isStarted,
-    _startRecognizing,
-    _stopRecognizing,
-    _cancelRecognizing,
-    _destroyRecognizer,
-  } = useVoiceRecognition({speechVolume: true});
+  const {isStarted, _startRecognizing, _stopRecognizing} = useVoiceRecognition({
+    speechVolume: false,
+    callbacks: {
+      onSpeechResults: results => {
+        const res = results?.value?.join(' ');
+        if (res?.toLocaleLowerCase().includes('play online'))
+          navigation.navigate('OnlineGame');
+        if (res?.toLocaleLowerCase().includes('play offline 1 vs 1'))
+          navigation.navigate('OfflineGame');
+        if (res?.toLocaleLowerCase().includes('play with AI'))
+          navigation.navigate('PlayWithAi');
+        if (res?.toLocaleLowerCase().includes('leaderboard'))
+          navigation.navigate('Leaderboard');
+        if (res?.toLocaleLowerCase().includes('settings'))
+          navigation.navigate('Settings');
+      },
+    },
+  }); //Voice Command Hook
 
   useLayoutEffect(() => {
     AsyncStorage.getItem('@player').then((res: any) => {
@@ -48,20 +58,6 @@ const Home = ({navigation}: IProps) => {
       Tts.stop();
     };
   }, []);
-
-  useEffect(() => {
-    const res = results?.value?.join(' ');
-    if (res?.toLocaleLowerCase().includes('play online'))
-      navigation.navigate('OnlineGame');
-    if (res?.toLocaleLowerCase().includes('play offline 1 vs 1'))
-      navigation.navigate('OfflineGame');
-    if (res?.toLocaleLowerCase().includes('play with AI'))
-      navigation.navigate('PlayWithAi');
-    if (res?.toLocaleLowerCase().includes('leaderboard'))
-      navigation.navigate('Leaderboard');
-    if (res?.toLocaleLowerCase().includes('settings'))
-      navigation.navigate('Settings');
-  }, [results]);
 
   return (
     <>
@@ -175,15 +171,9 @@ const Home = ({navigation}: IProps) => {
             title="Settings"
             onPress={() => {
               if (!isStarted) {
-                (async () => {
-                  await _startRecognizing();
-                })();
+                _startRecognizing();
               } else {
-                _destroyRecognizer();
-                (async () => {
-                  await _stopRecognizing();
-                  await _cancelRecognizing();
-                })();
+                _stopRecognizing();
               }
             }}
             buttonStyle={{

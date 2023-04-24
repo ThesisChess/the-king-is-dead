@@ -16,6 +16,7 @@ import CreateUser from './src/view/user/CreateUser';
 import Leaderboard from './src/view/leaderboard/Leaderboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {IUserRequest} from './config/model/user/user.request';
+import UserDetails from './src/view/user/UserDetails';
 
 const Stack = createNativeStackNavigator();
 
@@ -75,6 +76,7 @@ const App = () => {
                   headerShown: false,
                 }}>
                 <Stack.Screen name="CreateUser" component={CreateUser} />
+                <Stack.Screen name="UserDetails" component={UserDetails} />
                 <Stack.Screen name="Home" component={Home} />
                 <Stack.Screen name="OnlineGame" component={ChessPlayOnline} />
                 <Stack.Screen name="OfflineGame" component={Chess} />

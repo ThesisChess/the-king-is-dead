@@ -151,10 +151,11 @@ const ChessPlayOnline = ({navigation}: IProps) => {
         <View style={styles.chess_center_and_middle}>
           <View style={{marginBottom: '5%'}}>
             <ChessGameUserDetails
+              seconds={300}
               player="Player 2"
               name="David Dylan"
               image="https://randomuser.me/api/portraits/men/36.jpg"
-              isStart={false}
+              onEnd={() => {}}
             />
           </View>
           <ChessboardContainer
@@ -188,10 +189,11 @@ const ChessPlayOnline = ({navigation}: IProps) => {
 
           <View style={{marginTop: '5%'}}>
             <ChessGameUserDetails
-              player="Player 1"
-              name="Christian Adam"
-              image="https://randomuser.me/api/portraits/men/35.jpg"
-              isStart={true}
+              seconds={300}
+              player="Player 2"
+              name="David Dylan"
+              image="https://randomuser.me/api/portraits/men/36.jpg"
+              onEnd={() => {}}
             />
           </View>
         </View>

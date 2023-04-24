@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import SpeechRecognition, {
   SpeechRecognizedEvent,
   SpeechResultsEvent,
@@ -7,23 +7,27 @@ import SpeechRecognition, {
   SpeechEndEvent,
   SpeechVolumeChangeEvent,
 } from '@react-native-voice/voice';
-import Tts from 'react-native-tts';
+import {useEffectOnce} from './use_effect_once';
 
 export interface ISpeechRecognitionCallback {
-  onSpeechStart: (e: SpeechRecognizedEvent) => void;
-  onSpeechRecognized: (e: SpeechRecognizedEvent) => void;
-  onSpeechEnd: (e: SpeechEndEvent) => void;
-  onSpeechResults: (e: SpeechResultsEvent) => void;
-  onSpeechPartialResults: (e: SpeechResultsEvent) => void;
-  onSpeechError: (e: SpeechErrorEvent) => void;
-  onSpeechVolumeChanged: (e: SpeechVolumeChangeEvent) => void;
+  onSpeechStart?: (e: SpeechStartEvent) => void;
+  onSpeechRecognized?: (e: SpeechRecognizedEvent) => void;
+  onSpeechEnd?: (e: SpeechEndEvent) => void;
+  onSpeechResults?: (
+    e: SpeechResultsEvent,
+    partialResults?: SpeechResultsEvent,
+  ) => void;
+  onSpeechPartialResults?: (e: SpeechResultsEvent) => void;
+  onSpeechError?: (e: SpeechErrorEvent) => void;
+  onSpeechVolumeChanged?: (e: SpeechVolumeChangeEvent) => void;
 }
 
 type IProps = {
   speechVolume?: boolean;
+  callbacks?: ISpeechRecognitionCallback;
 };
 
-const useVoiceRecognition = ({speechVolume}: IProps) => {
+const useVoiceRecognition = ({speechVolume, callbacks}: IProps) => {
   const [isStarted, setIsStarted] = useState<boolean>(false);
 
   const [started, setStarted] = useState<SpeechStartEvent>();
@@ -41,7 +45,9 @@ const useVoiceRecognition = ({speechVolume}: IProps) => {
   const [volume, setVolume] = useState<SpeechVolumeChangeEvent>();
 
   const onSpeechStart = (e: SpeechStartEvent) => {
+    console.log('Error', e);
     setStarted(e);
+    callbacks?.onSpeechStart && callbacks.onSpeechStart(e);
   };
 
   const onSpeechRecognized = (e: SpeechRecognizedEvent) => {
@@ -50,70 +56,89 @@ const useVoiceRecognition = ({speechVolume}: IProps) => {
 
   const onSpeechEnd = (e: SpeechEndEvent) => {
     setEnd(e);
-    console.log('onSpeechEnd', e);
     setIsStarted(false);
+    callbacks?.onSpeechEnd && callbacks.onSpeechEnd(e);
   };
 
   const onSpeechResults = (e: SpeechResultsEvent) => {
     setResults(e);
-    // if (e.value) Tts.speak(e.value?.join(' '));
-    console.log('onSpeechResults', e);
+    callbacks?.onSpeechResults && callbacks.onSpeechResults(e, partialResults);
   };
 
   const onSpeechPartialResults = (e: SpeechResultsEvent) => {
     setPartialResults(e);
+    callbacks?.onSpeechPartialResults && callbacks.onSpeechPartialResults(e);
   };
 
   const onSpeechError = (e: SpeechErrorEvent) => {
     setError(e);
+    setIsStarted(false);
+    callbacks?.onSpeechError && callbacks.onSpeechError(e);
   };
 
   const onSpeechVolumeChanged = (e: SpeechVolumeChangeEvent) => {
-    console.log('SpeechVolumeChangeEvent', e);
+    console.log('Error', e);
     setVolume(e);
+    callbacks?.onSpeechVolumeChanged && callbacks.onSpeechVolumeChanged(e);
   };
 
-  const _startRecognizing = async () => {
-    _clearState();
+  const _startRecognizing = useCallback(() => {
     try {
-      await SpeechRecognition.start('en-US');
-      setIsStarted(true);
-      console.log('called start');
+      // _clearState();
+      console.log('Test');
+      SpeechRecognition.start('en-US')
+        .then(() => {
+          setIsStarted(true);
+        })
+        .catch(() => {
+          SpeechRecognition.removeAllListeners();
+          setIsStarted(false);
+        });
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
-  const _stopRecognizing = async () => {
+  const _stopRecognizing = useCallback(() => {
     try {
-      await SpeechRecognition.stop();
-      setIsStarted(false);
+      // SpeechRecognition.removeAllListeners();
+      // SpeechRecognition.stop();
+      SpeechRecognition.destroy()
+        .then(() => {
+          SpeechRecognition.removeAllListeners();
+          setIsStarted(false);
+        })
+        .catch(() => {
+          SpeechRecognition.removeAllListeners();
+          setIsStarted(false);
+        });
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
-  const _cancelRecognizing = async () => {
+  const _cancelRecognizing = () => {
     try {
-      await SpeechRecognition.cancel();
-      setIsStarted(false);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const _destroyRecognizer = async () => {
-    try {
-      await SpeechRecognition.destroy();
-
       SpeechRecognition.removeAllListeners();
+      SpeechRecognition.cancel();
+
+      setIsStarted(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const _destroyRecognizer = useCallback(() => {
+    try {
+      SpeechRecognition.removeAllListeners();
+      SpeechRecognition.destroy();
 
       setIsStarted(false);
     } catch (e) {
       console.error(e);
     }
     _clearState();
-  };
+  }, []);
 
   const _clearState = () => {
     setRecognized(undefined);
@@ -125,7 +150,7 @@ const useVoiceRecognition = ({speechVolume}: IProps) => {
     setPartialResults(undefined);
   };
 
-  useEffect(() => {
+  useEffectOnce(() => {
     SpeechRecognition.onSpeechStart = onSpeechStart;
     SpeechRecognition.onSpeechRecognized = onSpeechRecognized;
     SpeechRecognition.onSpeechEnd = onSpeechEnd;
@@ -154,14 +179,6 @@ const useVoiceRecognition = ({speechVolume}: IProps) => {
     _stopRecognizing,
     _cancelRecognizing,
     _destroyRecognizer,
-    callbacks: {
-      onSpeechRecognized,
-      onSpeechEnd,
-      onSpeechResults,
-      onSpeechPartialResults,
-      onSpeechError,
-      onSpeechVolumeChanged,
-    } as ISpeechRecognitionCallback,
   };
 };
 
