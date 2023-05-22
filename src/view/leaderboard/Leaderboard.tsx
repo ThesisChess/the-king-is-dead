@@ -1,6 +1,8 @@
 import React, {useEffect, useState} from 'react';
+
+import firestore from '@react-native-firebase/firestore';
+
 import {Image, Text, View} from 'react-native';
-import {UserFirebaseController} from '../../../config/user.firebase';
 import {IUserRequest} from '../../../config/model/user/user.request';
 import {Header, Skeleton} from '@rneui/themed';
 
@@ -9,30 +11,32 @@ type IProps = {
 };
 
 const Leaderboard = ({navigation}: IProps) => {
-  const {getAllUsers} = new UserFirebaseController();
   const [players, setPlayers] = useState<IUserRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    (() => {
+    (async () => {
       setLoading(true);
 
-      getAllUsers().then(res => {
-        if (res) {
-          const result = Object.keys(res).map(x => {
-            const data = res[x];
-            return {...data, key: res} as IUserRequest;
-          });
+      const players = await firestore()
+        .collection('player')
+        .orderBy('elo_rating', 'desc')
+        .get();
 
-          setPlayers(
-            result.sort((a, b) => b.elo_rating - a.elo_rating).slice(0, 5),
-          );
-
-          setTimeout(() => {
-            setLoading(false);
-          }, 1500);
-        }
+      const result = players.docs.map((x: any) => {
+        return {
+          key: x.id,
+          ...x._data,
+        } as IUserRequest;
       });
+
+      setPlayers(
+        result.sort((a, b) => b.elo_rating - a.elo_rating).slice(0, 5),
+      );
+
+      setTimeout(() => {
+        setLoading(false);
+      }, 1000);
     })();
 
     return () => {

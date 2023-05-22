@@ -2,12 +2,12 @@ import React, {useEffect, useLayoutEffect, useState} from 'react';
 import Tts from 'react-native-tts';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import useVoiceRecognition from '../../hook/use_voice_recognition';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {Avatar, Button, Header} from '@rneui/themed';
 import {Image, Text, View} from 'react-native';
 import {styles} from '../../styles/container_style';
 import {IUserRequest} from '../../../config/model/user/user.request';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type IProps = {
   navigation: any;
@@ -20,17 +20,37 @@ const Home = ({navigation}: IProps) => {
     speechVolume: false,
     callbacks: {
       onSpeechResults: results => {
-        const res = results?.value?.join(' ');
-        if (res?.toLocaleLowerCase().includes('play online'))
-          navigation.navigate('OnlineGame');
-        if (res?.toLocaleLowerCase().includes('play offline 1 vs 1'))
-          navigation.navigate('OfflineGame');
-        if (res?.toLocaleLowerCase().includes('play with AI'))
-          navigation.navigate('PlayWithAi');
-        if (res?.toLocaleLowerCase().includes('leaderboard'))
-          navigation.navigate('Leaderboard');
-        if (res?.toLocaleLowerCase().includes('settings'))
-          navigation.navigate('Settings');
+        const res = results?.value?.join(' ').toLowerCase();
+
+        if (res?.toLocaleLowerCase().includes('play online'.toLowerCase())) {
+          _stopRecognizing();
+          return navigation.navigate('OnlineGame');
+        }
+
+        if (
+          res?.toLocaleLowerCase().includes('play offline 1 vs 1'.toLowerCase())
+        ) {
+          _stopRecognizing();
+          return navigation.navigate('OfflineGame');
+        }
+
+        if (res?.includes('play with ai'.toLowerCase())) {
+          _stopRecognizing();
+          return navigation.navigate('PlayWithAi');
+        }
+
+        if (res?.toLocaleLowerCase().includes('leaderboard'.toLowerCase())) {
+          _stopRecognizing();
+          return navigation.navigate('Leaderboard'.toLowerCase());
+        }
+
+        if (res?.toLocaleLowerCase().includes('settings'.toLowerCase())) {
+          _stopRecognizing();
+          return navigation.navigate('Settings');
+        }
+
+        _stopRecognizing();
+        return Tts.speak(`Invalid navigation`);
       },
     },
   }); //Voice Command Hook
@@ -44,18 +64,13 @@ const Home = ({navigation}: IProps) => {
   useEffect(() => {
     Tts.speak(`Home`);
 
-    return () => {
-      Tts.stop();
-    };
-  }, []);
-
-  useEffect(() => {
     Tts.speak(
       `Please choose from the options: Play Online, Play Offline 1 vs 1, Play with AI, Leaderboard and Settings.`,
     );
 
     return () => {
       Tts.stop();
+      _stopRecognizing();
     };
   }, []);
 

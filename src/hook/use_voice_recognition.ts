@@ -151,11 +151,11 @@ const useVoiceRecognition = ({speechVolume, callbacks}: IProps) => {
   };
 
   useEffectOnce(() => {
-    SpeechRecognition.onSpeechStart = onSpeechStart;
-    SpeechRecognition.onSpeechRecognized = onSpeechRecognized;
-    SpeechRecognition.onSpeechEnd = onSpeechEnd;
+    // SpeechRecognition.onSpeechStart = onSpeechStart;
+    // SpeechRecognition.onSpeechRecognized = onSpeechRecognized;
+    // SpeechRecognition.onSpeechEnd = onSpeechEnd;
     SpeechRecognition.onSpeechResults = onSpeechResults;
-    SpeechRecognition.onSpeechPartialResults = onSpeechPartialResults;
+    // SpeechRecognition.onSpeechPartialResults = onSpeechPartialResults;
     SpeechRecognition.onSpeechError = onSpeechError;
 
     if (speechVolume)

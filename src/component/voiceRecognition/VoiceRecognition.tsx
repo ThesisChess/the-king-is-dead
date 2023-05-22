@@ -71,7 +71,6 @@ const VoiceRecognition = ({children}: IProps) => {
   };
 
   const onSpeechVolumeChanged = (e: SpeechVolumeChangeEvent) => {
-    console.log('SpeechVolumeChangeEvent', e);
     setVolume(e);
   };
 
@@ -79,7 +78,6 @@ const VoiceRecognition = ({children}: IProps) => {
     _clearState();
     try {
       await SpeechRecognition.start('en-US');
-      console.log('called start');
     } catch (e) {
       console.error(e);
     }

@@ -5,6 +5,8 @@ import {DefaultTheme, NavigationContainer} from '@react-navigation/native';
 import {createTheme, ThemeProvider} from '@rneui/themed';
 import {SettingsContext} from './src/context/settings';
 import {useSettings} from './src/context/settings/hooks';
+import {IUserRequest} from './config/model/user/user.request';
+import {AppState} from 'react-native';
 
 import Chess from './src/view/chess/Chess';
 import LoadingScreen from './src/component/screen/LoadingScreen';
@@ -15,8 +17,9 @@ import ChessPlayOnline from './src/view/chess/ChessPlayOnline';
 import CreateUser from './src/view/user/CreateUser';
 import Leaderboard from './src/view/leaderboard/Leaderboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {IUserRequest} from './config/model/user/user.request';
 import UserDetails from './src/view/user/UserDetails';
+import firestore from '@react-native-firebase/firestore';
+import Game from './src/view/game/Game';
 
 const Stack = createNativeStackNavigator();
 
@@ -44,6 +47,12 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [player, setPlayer] = useState<IUserRequest | undefined>();
 
+  const handleUpdateData = async (key: string, isOnline: boolean) => {
+    await firestore().collection('player').doc(key).update({
+      is_online: isOnline,
+    });
+  };
+
   useEffect(() => {
     setLoading(true);
 
@@ -59,6 +68,34 @@ const App = () => {
     return () => {
       setPlayer(undefined);
       setLoading(false);
+      (async () => {
+        const moveIdResponse = await AsyncStorage.getItem('@moveId');
+
+        if (moveIdResponse) {
+          await AsyncStorage.removeItem('@moveId');
+        }
+      })();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'background') {
+        return handleUpdateData('VSQaFFwiCsCx2v1b0PzX', false);
+      }
+
+      if (nextAppState === 'active') {
+        return handleUpdateData('VSQaFFwiCsCx2v1b0PzX', true);
+      }
+    };
+
+    // Cast AppState to the AppStateStatic type
+    const appState: any = AppState;
+
+    appState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      appState.removeEventListener('change', handleAppStateChange);
     };
   }, []);
 
@@ -78,7 +115,11 @@ const App = () => {
                 <Stack.Screen name="CreateUser" component={CreateUser} />
                 <Stack.Screen name="UserDetails" component={UserDetails} />
                 <Stack.Screen name="Home" component={Home} />
-                <Stack.Screen name="OnlineGame" component={ChessPlayOnline} />
+                <Stack.Screen name="OnlineGame" component={Game} />
+                <Stack.Screen
+                  name="StartOnlineGame"
+                  component={ChessPlayOnline}
+                />
                 <Stack.Screen name="OfflineGame" component={Chess} />
                 <Stack.Screen name="Leaderboard" component={Leaderboard} />
                 <Stack.Screen name="PlayWithAi" component={ChessPlayWithAi} />

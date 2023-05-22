@@ -1,4 +1,4 @@
-import React, {memo, useCallback, useEffect, useRef, useState} from 'react';
+import React, {memo, useEffect, useRef, useState} from 'react';
 
 import useVoiceRecognition from '../../hook/use_voice_recognition';
 import Tts from 'react-native-tts';
@@ -12,7 +12,7 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {styles} from '../../styles/container_style';
 import {Image, SafeAreaView, Text, TouchableOpacity, View} from 'react-native';
 import {checker} from '../../utils/move_checker';
-import {Button, CheckBox, Header} from '@rneui/themed';
+import {Button, Header} from '@rneui/themed';
 import {pieces} from '../../utils/piece';
 
 type IProps = {
@@ -82,7 +82,6 @@ const Chess = ({navigation}: IProps) => {
                 };
                 (async () => {
                   const moved = await chessboardRef.current?.move(move);
-                  console.log('move', move);
                   if (moved) {
                     Tts.speak(`${move.from} to ${move.to}`);
 
@@ -106,8 +105,6 @@ const Chess = ({navigation}: IProps) => {
       x => x.position.toLocaleLowerCase() === position.toLocaleLowerCase(),
     );
 
-    console.log('handleOnEndTime', result);
-
     if (result)
       selectOnEndGame({
         isGameEnd: true,
@@ -121,6 +118,7 @@ const Chess = ({navigation}: IProps) => {
 
     return () => {
       Tts.stop();
+      _stopRecognizing();
     };
   }, []);
 
@@ -132,6 +130,7 @@ const Chess = ({navigation}: IProps) => {
 
     return () => {
       Tts.stop();
+      _stopRecognizing();
     };
   }, [onEndGame.isGameEnd]);
 
@@ -269,7 +268,6 @@ const Chess = ({navigation}: IProps) => {
               );
 
               const pieceType = pieces.find(x => x.key === move.piece);
-              console.log(move);
 
               if (move.captured) {
                 const pieceCapturedType = pieces.find(
@@ -298,7 +296,6 @@ const Chess = ({navigation}: IProps) => {
                     countdownRefPlayer1.current.resume();
                     countdownRefPlayer2.current.pause();
                   } else {
-                    console.log('bottom');
                     countdownRefPlayer2.current.resume();
                     countdownRefPlayer1.current.pause();
                   }

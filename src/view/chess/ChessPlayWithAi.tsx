@@ -30,6 +30,7 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
       position: 'top' | 'bottom';
     }[]
   >();
+
   const [onEndGame, selectOnEndGame] = useState<{
     isGameEnd: boolean;
     isWinner?: 'w' | 'b';
@@ -96,7 +97,6 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
                 };
                 (async () => {
                   const moved = await chessboardRef.current?.move(move);
-                  console.log('move', move);
                   if (moved) {
                     Tts.speak(`${move.from} to ${move.to}`);
 
@@ -109,8 +109,6 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
             });
             Tts.speak(`Invalid Move`);
           }
-        } else {
-          Tts.speak(`Invalid Move`);
         }
       })();
   };
@@ -131,12 +129,6 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
   useEffect(() => {
     Tts.speak(`Play With AI`);
 
-    return () => {
-      Tts.stop();
-    };
-  }, []);
-
-  useEffect(() => {
     if (onEndGame.isGameEnd) {
       if (onEndGame?.message) Tts.speak(onEndGame?.message);
       Tts.speak(`Press the screen to close the game`);
@@ -144,6 +136,7 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
 
     return () => {
       Tts.stop();
+      _stopRecognizing();
     };
   }, [onEndGame.isGameEnd]);
 
@@ -194,7 +187,7 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
               selectVisibleMode(false);
             }}
             onCancel={() => {
-              navigation.goBack();
+              navigation.navigate('Home');
             }}
           />
         </SafeAreaView>
@@ -262,7 +255,7 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
               name="Computer"
               image={require('../../assets/image/robot.png')}
               onEnd={() => {
-                console.log('onEnd', playerPosition);
+                handleOnEndTime('top');
               }}
             />
           </View>
@@ -307,7 +300,6 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
                     countdownRefPlayer1.current.resume();
                     countdownRefPlayer2.current.pause();
                   } else {
-                    console.log('bottom');
                     countdownRefPlayer2.current.resume();
                     countdownRefPlayer1.current.pause();
                   }
@@ -359,7 +351,7 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
               player="Player 1"
               name="Player"
               onEnd={() => {
-                console.log('onEnd', playerPosition);
+                handleOnEndTime('bottom');
               }}
             />
           </View>

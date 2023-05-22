@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "283705491916",
+    "project_id": "the-king-is-dead-118e4",
+    "storage_bucket": "the-king-is-dead-118e4.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:283705491916:android:11d37dd1b5f88229545d69",
+        "android_client_info": {
+          "package_name": "com.the_king_is_dead"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "283705491916-emiljpp2jht1qr15p56u9elmuapfthq4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNSJID4jld6QZujscxFy1_wUArNfJNqSg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "283705491916-emiljpp2jht1qr15p56u9elmuapfthq4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

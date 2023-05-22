@@ -31,7 +31,6 @@ const DialogPiece: React.FC<DialogPieceProps> = React.memo(
         isTapActive.value = true;
       })
       .onTouchesUp(() => {
-        console.log('onSelectPiece', piece);
         if (onSelectPiece) runOnJS(onSelectPiece)(piece);
       })
       .onFinalize(() => {

@@ -7,10 +7,11 @@ type IProps = {
   player: string;
   name: string;
   image?: string;
+  showTimer?: boolean;
 } & CountdownProps;
 
 const ChessGameUserDetails = forwardRef(
-  ({player, name, image, ...props}: IProps, ref: any) => {
+  ({player, name, image, showTimer = true, ...props}: IProps, ref: any) => {
     return (
       <>
         <View
@@ -53,25 +54,28 @@ const ChessGameUserDetails = forwardRef(
               <Text>{name}</Text>
             </View>
           </View>
-
-          <View>
-            <Countdown
-              ref={ref}
-              style={{
-                paddingVertical: '5%',
-                paddingHorizontal: '2%',
-                borderRadius: 5,
-                backgroundColor: '#F24141',
-              }}
-              textStyle={{
-                textAlign: 'center',
-                fontSize: 12,
-                fontWeight: 'bold',
-                color: '#ffff',
-              }}
-              {...props}
-            />
-          </View>
+          {showTimer ? (
+            <View>
+              <Countdown
+                ref={ref}
+                style={{
+                  paddingVertical: '5%',
+                  paddingHorizontal: '2%',
+                  borderRadius: 5,
+                  backgroundColor: '#F24141',
+                }}
+                textStyle={{
+                  textAlign: 'center',
+                  fontSize: 12,
+                  fontWeight: 'bold',
+                  color: '#ffff',
+                }}
+                {...props}
+              />
+            </View>
+          ) : (
+            <></>
+          )}
         </View>
       </>
     );
