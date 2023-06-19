@@ -12,7 +12,6 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {styles} from '../../styles/container_style';
 import {
   ActivityIndicator,
-  AppState,
   Image,
   Text,
   TouchableOpacity,
@@ -49,6 +48,7 @@ const ChessPlayOnline = ({navigation}: IProps) => {
   const moveId = useRef<string | undefined>();
   const gameId = useRef<string | undefined>();
   const playerPieceColor = useRef<string | undefined>();
+  const currentUserId = useRef<IUserRequest>();
 
   const [loading, setLoading] = useState(false);
   const [currentPlayerDetails, setCurrentPlayerDetails] = useState<
@@ -75,6 +75,16 @@ const ChessPlayOnline = ({navigation}: IProps) => {
     speechVolume: false,
     callbacks: {
       onSpeechResults: e => {
+        const res = e?.value?.join(' ').toLowerCase();
+
+        // if (res?.toLocaleLowerCase().includes('Quit'.toLowerCase())) {
+        //   Tts.speak(`Quit Game`);
+
+        //   setTimeout(() => {
+        //     navigation.goBack();
+        //   }, 1000);
+        // } else voiceCommandMove(e);
+
         voiceCommandMove(e);
       },
     },
@@ -144,46 +154,68 @@ const ChessPlayOnline = ({navigation}: IProps) => {
   };
 
   const handleMove = async (moveId: string, gameId: string, move: IMove) => {
-    await updateMove(moveId, gameId, move);
+    if (currentUserId.current?.key)
+      await updateMove(moveId, gameId, move, currentUserId.current?.key);
   };
 
   //------------------------------------ Start FireStore ------------------------------------
 
   const handleCreateMove = async (gameIdResponse: string) => {
+    debugger;
     const response = await getMoveByGameId(gameIdResponse, 'w');
 
     const playerColor = !response.docs.length ? 'w' : 'b';
-    const createResult = await createMove(gameIdResponse, playerColor);
 
-    if (createResult) {
-      await AsyncStorage.setItem('@moveId', createResult?.id);
+    if (currentUserId?.current?.key) {
+      const createResult = await createMove(
+        gameIdResponse,
+        playerColor,
+        currentUserId.current?.key,
+      );
+
+      if (createResult) {
+        await AsyncStorage.setItem('@moveId', createResult?.id);
+      }
+
+      setPlayer(playerColor);
+      playerPieceColor.current = playerColor;
+      moveId.current = createResult?.id;
+
+      Tts.speak(`
+        ${currentUserId.current.name} ${
+        playerColor === 'w' ? 'White' : 'Black'
+      }  pieces`);
     }
-
-    setPlayer(playerColor);
-    playerPieceColor.current = playerColor;
-    moveId.current = createResult?.id;
   };
+
+  useEffect(() => {
+    // set the current user in ref;
+    AsyncStorage.getItem('@player').then(response => {
+      if (response) {
+        const details = JSON.parse(response);
+        currentUserId.current = details;
+      }
+    });
+  }, []);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-
+      debugger;
       const gameResponse = await AsyncStorage.getItem('@game');
       const gameIdResponse = await AsyncStorage.getItem('@gameId');
       const moveIdResponse = await AsyncStorage.getItem('@moveId');
-
-      console.log('gameResponse', gameResponse);
 
       if (gameIdResponse && gameResponse) {
         const documentRef = await firestore()
           .collection('move')
           .doc(moveIdResponse ? moveIdResponse : '');
-
+        debugger;
         // Retrieve the document data
         documentRef.get().then(async documentSnapshot => {
+          console.log('documentSnapshot', documentSnapshot);
           if (documentSnapshot.exists) {
             const data = documentSnapshot.data();
-            console.log('data?.fen', data?.fen);
 
             setPlayer(data?.playerConstantColor);
             chessboardRef.current?.resetBoard(data?.fen);
@@ -221,8 +253,6 @@ const ChessPlayOnline = ({navigation}: IProps) => {
               if (data) setPlayerDetails(data);
             }
           });
-
-          setCurrentPlayerDetails(currentPlayerDetails);
         }
       }
       setTimeout(() => {
@@ -241,7 +271,6 @@ const ChessPlayOnline = ({navigation}: IProps) => {
       .onSnapshot(querySnapshot => {
         querySnapshot.forEach((x: any) => {
           const move = x.data();
-
           if (playerPieceColor) {
             if (move.color !== playerPieceColor?.current) {
               if (move?.from && move?.to) {
@@ -260,13 +289,14 @@ const ChessPlayOnline = ({navigation}: IProps) => {
 
   //------------------------------------ End FireStore ------------------------------------
   useEffect(() => {
-    Tts.speak(`Play Online 1 vs 1`);
+    if (!loading) Tts.speak(`Connected`);
+    else Tts.speak(`Connecting`);
 
     return () => {
       Tts.stop();
       _stopRecognizing();
     };
-  }, []);
+  }, [loading]);
 
   useEffect(() => {
     if (onEndGame.isGameEnd) {
@@ -283,7 +313,10 @@ const ChessPlayOnline = ({navigation}: IProps) => {
   return (
     <>
       <Modal isVisible={loading}>
-        <ActivityIndicator />
+        <View>
+          <Text style={{textAlign: 'center'}}>Connecting....</Text>
+          <ActivityIndicator />
+        </View>
       </Modal>
 
       <Modal isVisible={onEndGame.isGameEnd}>
@@ -329,13 +362,13 @@ const ChessPlayOnline = ({navigation}: IProps) => {
             navigation.navigate('Home');
           },
         }}
-        rightComponent={{
-          icon: 'settings',
-          color: '#fff',
-          onPress: () => {
-            navigation.navigate('Settings');
-          },
-        }}
+        // rightComponent={{
+        //   icon: 'settings',
+        //   color: '#fff',
+        //   onPress: () => {
+        //     navigation.navigate('Settings');
+        //   },
+        // }}
         centerComponent={{text: 'Play Online', style: {color: '#ffff'}}}
       />
       <GestureHandlerRootView style={styles.container_center_and_middle}>

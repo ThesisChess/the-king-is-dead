@@ -9,12 +9,24 @@ export interface IMove {
   fen: string;
 }
 
-export const createMove = async (gameId: string, color: string) => {
+export interface ICreateMove {
+  gameId: string;
+  color: string;
+  playerConstantColor: string;
+  playerId: string;
+}
+
+export const createMove = async (
+  gameId: string,
+  color: string,
+  playerId: string,
+) => {
   try {
     const response = await moveCollection.add({
       playerConstantColor: color,
       gameId,
       color,
+      playerId,
     });
 
     return response;
@@ -27,6 +39,7 @@ export const updateMove = async (
   moveId: string,
   gameId: string,
   move: IMove,
+  playerId: string,
 ) => {
   try {
     await moveCollection.doc(moveId).update({
@@ -35,6 +48,7 @@ export const updateMove = async (
       to: move.to,
       fen: move.fen,
       gameId,
+      playerId,
     });
     console.log('Move updated successfully!');
   } catch (error) {

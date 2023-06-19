@@ -5,10 +5,8 @@ import Tts from 'react-native-tts';
 import useVoiceRecognition from '../../hook/use_voice_recognition';
 import firestore from '@react-native-firebase/firestore';
 
-import {Image, View} from 'react-native';
+import {Image, TouchableOpacity, View} from 'react-native';
 import {Text} from '@rneui/base';
-import {styles} from '../../styles/container_style';
-import {Button} from '@rneui/themed';
 import {IUserRequest} from '../../../config/model/user/user.request';
 
 type IProps = {
@@ -23,53 +21,56 @@ const CreateUser = ({navigation}: IProps) => {
     speechVolume: false,
     callbacks: {
       onSpeechResults: e => {
-        if (!isNameSetRef.current) {
+        if (!isNameSetRef?.current) {
           if (e?.value) {
-            handleCreate(e?.value[0]).then(() => {
-              isNameSetRef.current = true;
-            });
+            console.log('value>>>>>>>>>>', e?.value);
+
+            handleCreate(e?.value[0]);
           }
         } else {
           const res = e?.value?.join(' ');
+
           if (res?.toLocaleLowerCase().includes('home'))
             navigation.navigate('Home');
-
-          if (res?.toLocaleLowerCase().includes('settings'))
-            navigation.navigate('Settings');
         }
       },
     },
   });
 
   const handleCreate = async (partialResults: string) => {
-    const data = {
-      name: partialResults,
-      elo_rating: 0,
-      is_on_game: false,
-      is_online: true,
-      created_at: new Date(),
-    } as IUserRequest;
+    try {
+      const data = {
+        name: partialResults,
+        elo_rating: 0,
+        is_on_game: false,
+        is_online: true,
+        created_at: new Date(),
+      } as IUserRequest;
+      console.log('data>>>>>>>>>>', data);
 
-    const response = await firestore().collection('player').add(data);
+      const response = await firestore().collection('player').add(data);
+      console.log('response>>>>>>>>>>', response);
 
-    _stopRecognizing();
+      _stopRecognizing();
 
-    Tts.speak(
-      `Hello, ${data.name}. Please say "Home" to begin the game. If you need assistance, please say "Settings" to review how to play King Is Dead`,
-    );
+      Tts.speak(`Hello, ${data.name}. Tap the screen to close.`);
 
-    setName(data.name);
+      setName(data.name);
 
-    await AsyncStorage.setItem(
-      '@player',
-      JSON.stringify({key: response.id, ...data}),
-    );
+      AsyncStorage.setItem(
+        '@player',
+        JSON.stringify({key: response.id, ...data}),
+      );
+
+      isNameSetRef.current = true;
+    } catch (error) {
+      console.log('handleCreate', error);
+    }
   };
 
   useEffect(() => {
-    // if (!isNameSetRef.current)
     Tts.speak(
-      'Hello, welcome to world of king is dead. Please state your name...',
+      'Hello, welcome to world of king is dead. Please tap the screen and state your name.',
     );
 
     return () => {
@@ -78,134 +79,117 @@ const CreateUser = ({navigation}: IProps) => {
     };
   }, []);
 
-  // useEffect(() => {
-  //   if (isNameSetRef.current)
-  //     Tts.speak(
-  //       `Hello, ${name}. Please say "Home" to begin the game. If you need assistance, please say "Settings" to review how to play King Is Dead`,
-  //     );
-
-  //   return () => {
-  //     Tts.stop();
-  //     _stopRecognizing();
-  //   };
-  // }, [isNameSetRef, name]);
-
   return (
-    <View
-      style={[
-        {
-          flex: 1,
-          marginTop: 70,
-          margin: 20,
-          alignContent: 'center',
-          justifyContent: 'center',
-        },
-      ]}>
-      <Image
+    <TouchableOpacity
+      onPress={() => {
+        if (!name) {
+          if (!isStarted) {
+            _startRecognizing();
+          } else {
+            _stopRecognizing();
+          }
+        } else {
+          navigation.navigate('Home');
+        }
+      }}
+      style={{
+        flex: 1,
+        // backgroundColor: 'red',
+        alignContent: 'center',
+        justifyContent: 'center',
+      }}>
+      <View
         style={[
           {
-            width: 250,
-            height: 250,
-            justifyContent: 'center',
-            alignSelf: 'center',
+            marginTop: 70,
+            margin: 20,
           },
-        ]}
-        source={require('../../assets/image/chess-pieces-group.png')}
-      />
-
-      <View
-        style={{
-          marginVertical: 40,
-        }}>
-        {!name ? (
-          <>
-            <Text
-              h3
-              style={{
-                textAlign: 'center',
-              }}>
-              Hello, welcome to world of King is Dead.
-            </Text>
-            <Text
-              style={{
-                textAlign: 'center',
-                fontSize: 20,
-              }}>
-              Please state your name...
-            </Text>
-          </>
-        ) : (
-          <>
-            <Text
-              h3
-              style={{
-                textAlign: 'center',
-              }}>
-              Hello, {name}.
-            </Text>
-            <Text
-              style={{
-                textAlign: 'center',
-                fontSize: 20,
-              }}>
-              Please say "Home" to begin the game.
-            </Text>
-            <Text
-              style={{
-                textAlign: 'center',
-                fontSize: 20,
-              }}>
-              If you need assistance, please say "Settings" to review how to
-              play
-            </Text>
-            <Text
-              style={{
-                textAlign: 'center',
-                fontSize: 20,
-              }}>
-              King Is Dead
-            </Text>
-          </>
-        )}
-      </View>
-      <View style={styles.chess_start_button}>
-        <Button
-          title="Settings"
-          onPress={() => {
-            if (!isStarted) {
-              _startRecognizing();
-            } else {
-              _stopRecognizing();
-            }
-          }}
-          buttonStyle={{
-            width: 100,
-            height: 100,
-            borderRadius: 100,
-          }}>
-          {isStarted ? (
-            <FontAwesomeIcon name="microphone" color="white" size={40} />
-          ) : (
-            <FontAwesomeIcon name="microphone-slash" color="white" size={40} />
-          )}
-        </Button>
-
-        <Text>{isStarted ? 'Started' : 'Stopped'} </Text>
-      </View>
-
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'flex-end',
-        }}>
-        <Button
-          title="Close"
-          type="outline"
-          size="lg"
-          onPress={() => navigation.navigate('Home')}
+        ]}>
+        <Image
+          style={[
+            {
+              width: 250,
+              height: 250,
+              justifyContent: 'center',
+              alignSelf: 'center',
+            },
+          ]}
+          source={require('../../assets/image/chess-pieces-group.png')}
         />
+
+        <View
+          style={{
+            marginVertical: 40,
+            alignItems: 'center',
+          }}>
+          {!name ? (
+            <>
+              <Text
+                h3
+                style={{
+                  textAlign: 'center',
+                }}>
+                Hello, welcome to world of King is Dead.
+              </Text>
+              <Text
+                style={{
+                  textAlign: 'center',
+                  fontSize: 20,
+                }}>
+                Please tap the screen and state your name
+              </Text>
+
+              <View
+                style={{
+                  marginTop: 50,
+                  width: 100,
+                  height: 100,
+                  borderRadius: 100,
+                  backgroundColor: 'red',
+                  justifyContent: 'center',
+                  alignContent: 'center',
+                  alignItems: 'center',
+                }}>
+                {isStarted ? (
+                  <FontAwesomeIcon name="microphone" color="white" size={40} />
+                ) : (
+                  <FontAwesomeIcon
+                    name="microphone-slash"
+                    color="white"
+                    size={40}
+                  />
+                )}
+              </View>
+            </>
+          ) : (
+            <>
+              <Text
+                h3
+                style={{
+                  textAlign: 'center',
+                  fontSize: 20,
+                }}>
+                King Is Dead
+              </Text>
+              <Text
+                style={{
+                  textAlign: 'center',
+                  fontSize: 20,
+                }}>
+                Hello, {name}.
+              </Text>
+              <Text
+                style={{
+                  textAlign: 'center',
+                  fontSize: 20,
+                }}>
+                Tap the screen to close.{' '}
+              </Text>
+            </>
+          )}
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

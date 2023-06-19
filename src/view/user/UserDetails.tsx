@@ -23,8 +23,8 @@ const UserDetails = ({navigation}: IProps) => {
         if (res?.toLocaleLowerCase().includes('home'))
           navigation.navigate('Home');
 
-        if (res?.toLocaleLowerCase().includes('settings'))
-          navigation.navigate('Settings');
+        // if (res?.toLocaleLowerCase().includes('settings'))
+        //   navigation.navigate('Settings');
       },
     },
   }); //Voice Command Hook
@@ -95,7 +95,7 @@ const UserDetails = ({navigation}: IProps) => {
         </View>
         <View style={styles.chess_start_button}>
           <Button
-            title="Settings"
+            // title="Settings"
             onPress={() => {
               if (!isStarted) {
                 _startRecognizing();

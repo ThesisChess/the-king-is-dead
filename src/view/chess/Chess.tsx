@@ -22,6 +22,7 @@ type IProps = {
 const Chess = ({navigation}: IProps) => {
   const countdownRefPlayer1 = useRef<any>(null);
   const countdownRefPlayer2 = useRef<any>(null);
+  const visibleRef = useRef<any>(true);
 
   const [player, setPlayer] = useState<'w' | 'b' | undefined>(undefined); //state for player type
   const [visibleMode, selectVisibleMode] = useState<boolean>(true); //select mode visibility
@@ -45,10 +46,94 @@ const Chess = ({navigation}: IProps) => {
     speechVolume: false,
     callbacks: {
       onSpeechResults: e => {
-        voiceCommandMove(e);
+        const res = e?.value?.join(' ').toLowerCase();
+
+        if (res?.toLocaleLowerCase().includes('Quit'.toLowerCase())) {
+          Tts.speak(`Quit Game`);
+
+          setTimeout(() => {
+            navigation.goBack();
+          }, 1000);
+        }
+
+        if (visibleRef.current) {
+          if (res?.toLocaleLowerCase().includes('Random'.toLowerCase())) {
+            selectModeColor('Random');
+            Tts.speak(`Random`);
+          }
+          if (res?.toLocaleLowerCase().includes('Black'.toLowerCase())) {
+            selectModeColor('Black');
+            Tts.speak(`Black`);
+          }
+          if (res?.toLocaleLowerCase().includes('White'.toLowerCase())) {
+            selectModeColor('White');
+            Tts.speak(`White`);
+          }
+
+          if (res?.toLocaleLowerCase().includes('Cancel'.toLowerCase())) {
+            navigation.goBack();
+          }
+
+          _stopRecognizing();
+        } else voiceCommandMove(e); // Voice Command in Move
       },
     },
   }); //Voice Command Hook
+
+  const selectModeColor = (val: string) => {
+    //function on select of the player type
+    let newVal: any = undefined;
+
+    if (val === 'Random') {
+      // Random Picker for player type
+      let playerType = ['White', 'Black'];
+
+      const randomIdx = Math.floor(Math.random() * playerType.length);
+      const type = playerType[randomIdx];
+
+      newVal = type;
+    }
+
+    const result: any = ['w', 'b'].map((x: any) => {
+      return {
+        color: x,
+        position:
+          newVal?.charAt(0)?.toLowerCase() === x ||
+          val?.charAt(0)?.toLowerCase() === x
+            ? 'bottom'
+            : 'top',
+      };
+    });
+
+    setPlayerPosition(result);
+    setPlayer(newVal === 'White' || val === 'White' ? 'w' : 'b');
+    selectVisibleMode(false);
+
+    visibleRef.current = false;
+
+    Tts.speak('Game Has Starter');
+
+    // position of the player if top or bottom
+    result?.map((x: any) => {
+      if (x.position === 'bottom') {
+        Tts.speak(`
+      Player 1 ${x.color === 'w' ? 'White' : 'Black'} pieces`);
+      } else {
+        Tts.speak(`
+      Player 2 ${x.color === 'w' ? 'White' : 'Black'} pieces`);
+      }
+    });
+
+    // position of the player if top or bottom
+    const findPlayerPosition = result.find((x: any) => x.color === 'w');
+
+    if (findPlayerPosition)
+      Tts.speak(
+        `${
+          findPlayerPosition?.position === 'bottom' ? 'Player 1' : 'Player 2'
+        } make the first move`,
+      );
+  };
 
   const voiceCommandMove = (results: any) => {
     _stopRecognizing();
@@ -134,6 +219,17 @@ const Chess = ({navigation}: IProps) => {
     };
   }, [onEndGame.isGameEnd]);
 
+  useEffect(() => {
+    if (visibleRef.current) {
+      Tts.speak(`Choose from the following modes: White, Random, and Black.`);
+    }
+
+    return () => {
+      Tts.stop();
+      _stopRecognizing();
+    };
+  }, []);
+
   return (
     <>
       <Modal isVisible={visibleMode}>
@@ -146,33 +242,7 @@ const Chess = ({navigation}: IProps) => {
           }}>
           <SelectMode
             onSubmit={val => {
-              //function on select of the player type
-              let newVal: any = undefined;
-
-              if (val === 'Random') {
-                // Random Picker for player type
-                let playerType = ['White', 'Black'];
-
-                const randomIdx = Math.floor(Math.random() * playerType.length);
-                const type = playerType[randomIdx];
-
-                newVal = type;
-              }
-
-              const result: any = ['w', 'b'].map((x: any) => {
-                return {
-                  color: x,
-                  position:
-                    newVal?.charAt(0)?.toLowerCase() === x ||
-                    val?.charAt(0)?.toLowerCase() === x
-                      ? 'bottom'
-                      : 'top',
-                };
-              });
-
-              setPlayerPosition(result);
-              setPlayer(newVal === 'White' || val === 'White' ? 'w' : 'b');
-              selectVisibleMode(false);
+              selectModeColor(val);
             }}
             onCancel={() => {
               navigation.goBack();
@@ -189,6 +259,35 @@ const Chess = ({navigation}: IProps) => {
               checkedColor="red"
             /> */}
           </SelectMode>
+
+          <View style={[styles.chess_start_button, {paddingTop: 20}]}>
+            <Button
+              title="Settings"
+              onPress={() => {
+                if (!isStarted) {
+                  _startRecognizing();
+                } else {
+                  _stopRecognizing();
+                }
+              }}
+              buttonStyle={{
+                width: 100,
+                height: 100,
+                borderRadius: 100,
+              }}>
+              {isStarted ? (
+                <FontAwesomeIcon name="microphone" color="white" size={40} />
+              ) : (
+                <FontAwesomeIcon
+                  name="microphone-slash"
+                  color="white"
+                  size={40}
+                />
+              )}
+            </Button>
+
+            <Text>{isStarted ? 'Started' : 'Stopped'} </Text>
+          </View>
         </SafeAreaView>
       </Modal>
 
@@ -235,13 +334,13 @@ const Chess = ({navigation}: IProps) => {
             navigation.navigate('Home');
           },
         }}
-        rightComponent={{
-          icon: 'settings',
-          color: '#fff',
-          onPress: () => {
-            navigation.navigate('Settings');
-          },
-        }}
+        // rightComponent={{
+        //   icon: 'settings',
+        //   color: '#fff',
+        //   onPress: () => {
+        //     navigation.navigate('Settings');
+        //   },
+        // }}
         centerComponent={{text: 'Play Offline 1 vs 1', style: {color: '#ffff'}}}
       />
       <GestureHandlerRootView style={styles.container_center_and_middle}>
@@ -249,7 +348,7 @@ const Chess = ({navigation}: IProps) => {
           <View style={{marginBottom: '5%'}}>
             <ChessGameUserDetails
               ref={countdownRefPlayer2}
-              seconds={300}
+              seconds={900}
               player="Player 2"
               name="Player"
               onEnd={() => {
@@ -340,7 +439,7 @@ const Chess = ({navigation}: IProps) => {
           <View style={{marginTop: '5%'}}>
             <ChessGameUserDetails
               ref={countdownRefPlayer1}
-              seconds={300}
+              seconds={900}
               player="Player 1"
               name="Player"
               onEnd={() => {

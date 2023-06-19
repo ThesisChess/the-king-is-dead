@@ -41,13 +41,18 @@ const Home = ({navigation}: IProps) => {
 
         if (res?.toLocaleLowerCase().includes('leaderboard'.toLowerCase())) {
           _stopRecognizing();
-          return navigation.navigate('Leaderboard'.toLowerCase());
+          return navigation.navigate('Leaderboard');
         }
 
-        if (res?.toLocaleLowerCase().includes('settings'.toLowerCase())) {
+        if (res?.toLocaleLowerCase().includes('how to play'.toLowerCase())) {
           _stopRecognizing();
-          return navigation.navigate('Settings');
+          return navigation.navigate('HowToPlay');
         }
+
+        // if (res?.toLocaleLowerCase().includes('settings'.toLowerCase())) {
+        //   _stopRecognizing();
+        //   return navigation.navigate('Settings');
+        // }
 
         _stopRecognizing();
         return Tts.speak(`Invalid navigation`);
@@ -65,7 +70,7 @@ const Home = ({navigation}: IProps) => {
     Tts.speak(`Home`);
 
     Tts.speak(
-      `Please choose from the options: Play Online, Play Offline 1 vs 1, Play with AI, Leaderboard and Settings.`,
+      `Please choose from the options: Play Online, Play Offline 1 vs 1, Play with AI, Leaderboard and How to play king is dead.`,
     );
 
     return () => {
@@ -161,18 +166,26 @@ const Home = ({navigation}: IProps) => {
             onPress={() => navigation.navigate('PlayWithAi')}
           />
         </View>
+
         <View style={{paddingBottom: 10}}>
           <Button
             title="Leaderboard"
             onPress={() => navigation.navigate('Leaderboard')}
           />
         </View>
+
         <View style={{paddingBottom: 10}}>
+          <Button
+            title="How to play king is dead"
+            onPress={() => navigation.navigate('HowToPlay')}
+          />
+        </View>
+        {/* <View style={{paddingBottom: 10}}>
           <Button
             title="Settings"
             onPress={() => navigation.navigate('Settings')}
           />
-        </View>
+        </View> */}
 
         <View
           style={[
@@ -183,7 +196,7 @@ const Home = ({navigation}: IProps) => {
             },
           ]}>
           <Button
-            title="Settings"
+            // title="Settings"
             onPress={() => {
               if (!isStarted) {
                 _startRecognizing();

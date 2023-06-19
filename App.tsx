@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import UserDetails from './src/view/user/UserDetails';
 import firestore from '@react-native-firebase/firestore';
 import Game from './src/view/game/Game';
+import HowToPlayView from './src/view/howToPlay/HowToPlayView';
 
 const Stack = createNativeStackNavigator();
 
@@ -123,7 +124,8 @@ const App = () => {
                 <Stack.Screen name="OfflineGame" component={Chess} />
                 <Stack.Screen name="Leaderboard" component={Leaderboard} />
                 <Stack.Screen name="PlayWithAi" component={ChessPlayWithAi} />
-                <Stack.Screen name="Settings" component={Settings} />
+                <Stack.Screen name="HowToPlay" component={HowToPlayView} />
+                {/* <Stack.Screen name="Settings" component={Settings} /> */}
               </Stack.Navigator>
             </SettingsContext.Provider>
           </ThemeProvider>

@@ -15,6 +15,7 @@ import {Button, Header} from '@rneui/themed';
 import {checker} from '../../utils/move_checker';
 import ChessboardContainer, {ChessboardRef} from '../../component/chess';
 import {pieces} from '../../utils/piece';
+import {Move} from 'chess.ts';
 
 type IProps = {
   navigation: any;
@@ -23,6 +24,7 @@ type IProps = {
 const ChessPlayWithAi = ({navigation}: IProps) => {
   const countdownRefPlayer1 = useRef<any>(null);
   const countdownRefPlayer2 = useRef<any>(null);
+  const visibleRef = useRef<any>(true);
 
   const [playerPosition, setPlayerPosition] = useState<
     {
@@ -41,14 +43,47 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
   const [visibleMode, selectVisibleMode] = useState<boolean>(true); //select mode visibility
 
   const chessboardRef = useRef<ChessboardRef>(null);
+
   const {isStarted, _startRecognizing, _stopRecognizing} = useVoiceRecognition({
     speechVolume: false,
     callbacks: {
       onSpeechResults: e => {
-        voiceCommandMove(e);
+        const res = e?.value?.join(' ').toLowerCase();
+
+        console.log(e);
+
+        if (res?.toLocaleLowerCase().includes('Quit'.toLowerCase())) {
+          Tts.speak(`Quit Game`);
+
+          setTimeout(() => {
+            navigation.goBack();
+          }, 1000);
+        }
+
+        if (visibleRef.current) {
+          if (res?.toLocaleLowerCase().includes('Random'.toLowerCase())) {
+            selectModeColor('Random');
+            Tts.speak(`Random`);
+          }
+          if (res?.toLocaleLowerCase().includes('Black'.toLowerCase())) {
+            selectModeColor('Black');
+            Tts.speak(`Black`);
+          }
+          if (res?.toLocaleLowerCase().includes('White'.toLowerCase())) {
+            selectModeColor('White');
+            Tts.speak(`White`);
+          }
+
+          if (res?.toLocaleLowerCase().includes('Cancel'.toLowerCase())) {
+            navigation.goBack();
+          }
+
+          _stopRecognizing();
+        } else voiceCommandMove(e); // Voice Command in Move
       },
     },
   }); //Voice Command Hook
+
   const randomAiMove = (fen: string) => {
     //handle the move randomly
     (async () => {
@@ -57,12 +92,76 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
 
       //handle the piece to move
       setTimeout(async () => {
-        await chessboardRef.current?.move({
+        const result = await chessboardRef.current?.move({
           from: data.from.toLowerCase(),
           to: data.to.toLowerCase(),
         } as any);
       }, 1500);
     })();
+  };
+
+  const selectModeColor = (val: string) => {
+    //function on select of the player type
+    let newVal: any = undefined;
+
+    if (val === 'Random') {
+      // Random Picker for player type
+      let playerType = ['White', 'Black'];
+
+      const randomIdx = Math.floor(Math.random() * playerType.length);
+      const type = playerType[randomIdx];
+
+      newVal = type;
+    }
+
+    const result: any = ['w', 'b'].map((x: any) => {
+      return {
+        color: x,
+        position:
+          newVal?.charAt(0)?.toLowerCase() === x ||
+          val?.charAt(0)?.toLowerCase() === x
+            ? 'bottom'
+            : 'top',
+      };
+    });
+
+    setPlayerPosition(result);
+    setPlayer(newVal === 'White' || val === 'White' ? 'w' : 'b');
+    selectVisibleMode(false);
+
+    visibleRef.current = false;
+
+    Tts.speak('Game Has Starter');
+
+    // position of the player if top or bottom
+    result?.map((x: any) => {
+      if (x.position === 'bottom') {
+        Tts.speak(`
+      Player 1 ${x.color === 'w' ? 'White' : 'Black'} pieces`);
+      } else {
+        Tts.speak(`
+      AI ${x.color === 'w' ? 'White' : 'Black'} pieces`);
+      }
+    });
+
+    // position of the player if top or bottom
+    const findPlayerPosition = result.find((x: any) => x.color === 'w');
+
+    if (findPlayerPosition)
+      Tts.speak(
+        `${
+          findPlayerPosition?.position === 'bottom' ? 'Player 1' : 'AI'
+        } make the first move`,
+      );
+
+    setTimeout(() => {
+      //AI First Move if AI is White
+      if ((newVal && newVal === 'Black') || val === 'Black')
+        // checker if the ai is the white so that the white do the first move
+        randomAiMove(
+          'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        );
+    }, 6000);
   };
 
   const voiceCommandMove = (results: any) => {
@@ -125,10 +224,16 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
         message: 'King is Dead',
       });
   };
-
   useEffect(() => {
     Tts.speak(`Play With AI`);
 
+    return () => {
+      Tts.stop();
+      _stopRecognizing();
+    };
+  }, []);
+
+  useEffect(() => {
     if (onEndGame.isGameEnd) {
       if (onEndGame?.message) Tts.speak(onEndGame?.message);
       Tts.speak(`Press the screen to close the game`);
@@ -139,6 +244,17 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
       _stopRecognizing();
     };
   }, [onEndGame.isGameEnd]);
+
+  useEffect(() => {
+    if (visibleRef.current) {
+      Tts.speak(`Choose from the following modes: White, Random, and Black.`);
+    }
+
+    return () => {
+      Tts.stop();
+      _stopRecognizing();
+    };
+  }, []);
 
   return (
     <>
@@ -152,44 +268,41 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
           }}>
           <SelectMode
             onSubmit={val => {
-              //function on select of the player type
-              let newVal: any = undefined;
-
-              if (val === 'Random') {
-                // Random Picker for player type
-                let playerType = ['White', 'Black'];
-
-                const randomIdx = Math.floor(Math.random() * playerType.length);
-                const type = playerType[randomIdx];
-
-                newVal = type;
-              }
-
-              if ((newVal && newVal === 'Black') || val === 'Black')
-                // checker if the ai is the white so that the white do the first move
-                randomAiMove(
-                  'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-                );
-
-              const result: any = ['w', 'b'].map((x: any) => {
-                return {
-                  color: x,
-                  position:
-                    newVal?.charAt(0)?.toLowerCase() === x ||
-                    val?.charAt(0)?.toLowerCase() === x
-                      ? 'bottom'
-                      : 'top',
-                };
-              });
-
-              setPlayerPosition(result);
-              setPlayer(newVal === 'White' || val === 'White' ? 'w' : 'b');
-              selectVisibleMode(false);
+              selectModeColor(val);
             }}
             onCancel={() => {
               navigation.navigate('Home');
             }}
           />
+
+          <View style={[styles.chess_start_button, {paddingTop: 20}]}>
+            <Button
+              title="Settings"
+              onPress={() => {
+                if (!isStarted) {
+                  _startRecognizing();
+                } else {
+                  _stopRecognizing();
+                }
+              }}
+              buttonStyle={{
+                width: 100,
+                height: 100,
+                borderRadius: 100,
+              }}>
+              {isStarted ? (
+                <FontAwesomeIcon name="microphone" color="white" size={40} />
+              ) : (
+                <FontAwesomeIcon
+                  name="microphone-slash"
+                  color="white"
+                  size={40}
+                />
+              )}
+            </Button>
+
+            <Text>{isStarted ? 'Started' : 'Stopped'} </Text>
+          </View>
         </SafeAreaView>
       </Modal>
 
@@ -236,13 +349,13 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
             navigation.navigate('Home');
           },
         }}
-        rightComponent={{
-          icon: 'settings',
-          color: '#fff',
-          onPress: () => {
-            navigation.navigate('Settings');
-          },
-        }}
+        // rightComponent={{
+        //   icon: 'settings',
+        //   color: '#fff',
+        //   onPress: () => {
+        //     navigation.navigate('Settings');
+        //   },
+        // }}
         centerComponent={{text: 'Play with AI', style: {color: '#ffff'}}}
       />
       <GestureHandlerRootView style={[styles.container_center_and_middle]}>
@@ -250,7 +363,7 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
           <View style={{marginBottom: '5%'}}>
             <ChessGameUserDetails
               ref={countdownRefPlayer2}
-              seconds={300}
+              seconds={900}
               player="AI"
               name="Computer"
               image={require('../../assets/image/robot.png')}
@@ -317,12 +430,6 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
                 });
               }
 
-              if (val.state.inCheck) {
-                return Tts.speak(
-                  val.move.color === 'w' ? 'Check Black' : 'Check White',
-                );
-              }
-
               if (val.state.isStalemate) {
                 return selectOnEndGame({
                   isGameEnd: true,
@@ -339,6 +446,12 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
                 });
               }
 
+              if (val.state.inCheck) {
+                Tts.speak(
+                  val.move.color === 'w' ? 'Check Black' : 'Check White',
+                );
+              }
+
               if (player && val.move.color === player) {
                 randomAiMove(val.state.fen);
               }
@@ -347,7 +460,7 @@ const ChessPlayWithAi = ({navigation}: IProps) => {
           <View style={{marginTop: '5%'}}>
             <ChessGameUserDetails
               ref={countdownRefPlayer1}
-              seconds={300}
+              seconds={900}
               player="Player 1"
               name="Player"
               onEnd={() => {

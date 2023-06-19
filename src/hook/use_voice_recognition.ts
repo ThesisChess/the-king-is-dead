@@ -95,7 +95,8 @@ const useVoiceRecognition = ({speechVolume, callbacks}: IProps) => {
           setIsStarted(false);
         });
     } catch (e) {
-      console.error(e);
+      console.error('_startRecognizing', e);
+      setIsStarted(false);
     }
   }, []);
 
@@ -113,7 +114,8 @@ const useVoiceRecognition = ({speechVolume, callbacks}: IProps) => {
           setIsStarted(false);
         });
     } catch (e) {
-      console.error(e);
+      console.error('_startRecognizing', e);
+      setIsStarted(false);
     }
   }, []);
 
@@ -151,8 +153,8 @@ const useVoiceRecognition = ({speechVolume, callbacks}: IProps) => {
   };
 
   useEffectOnce(() => {
-    // SpeechRecognition.onSpeechStart = onSpeechStart;
-    // SpeechRecognition.onSpeechRecognized = onSpeechRecognized;
+    SpeechRecognition.onSpeechStart = onSpeechStart;
+    SpeechRecognition.onSpeechRecognized = onSpeechRecognized;
     // SpeechRecognition.onSpeechEnd = onSpeechEnd;
     SpeechRecognition.onSpeechResults = onSpeechResults;
     // SpeechRecognition.onSpeechPartialResults = onSpeechPartialResults;

@@ -2,9 +2,10 @@ import React, {useEffect, useState} from 'react';
 
 import firestore from '@react-native-firebase/firestore';
 
-import {Image, Text, View} from 'react-native';
+import {Image, Text, TouchableOpacity, View} from 'react-native';
 import {IUserRequest} from '../../../config/model/user/user.request';
 import {Header, Skeleton} from '@rneui/themed';
+import Tts from 'react-native-tts';
 
 type IProps = {
   navigation: any;
@@ -30,9 +31,15 @@ const Leaderboard = ({navigation}: IProps) => {
         } as IUserRequest;
       });
 
-      setPlayers(
-        result.sort((a, b) => b.elo_rating - a.elo_rating).slice(0, 5),
-      );
+      const playerList = result
+        .sort((a, b) => b.elo_rating - a.elo_rating)
+        .slice(0, 5);
+
+      setPlayers(playerList);
+
+      playerList.map((x, i) => {
+        Tts.speak(`Rank No. ${i + 1} ${x.name}`);
+      });
 
       setTimeout(() => {
         setLoading(false);
@@ -42,11 +49,16 @@ const Leaderboard = ({navigation}: IProps) => {
     return () => {
       setLoading(false);
       setPlayers([]);
+      Tts.stop();
     };
   }, []);
 
   return (
-    <>
+    <TouchableOpacity
+      style={{flex: 1}}
+      onPress={() => {
+        navigation.navigate('Home');
+      }}>
       <Header
         style={{alignContent: 'center', alignItems: 'center'}}
         leftComponent={{
@@ -56,13 +68,13 @@ const Leaderboard = ({navigation}: IProps) => {
             navigation.navigate('Home');
           },
         }}
-        rightComponent={{
-          icon: 'settings',
-          color: '#fff',
-          onPress: () => {
-            navigation.navigate('Settings');
-          },
-        }}
+        // rightComponent={{
+        //   icon: 'settings',
+        //   color: '#fff',
+        //   onPress: () => {
+        //     navigation.navigate('Settings');
+        //   },
+        // }}
         centerComponent={{text: 'Leaderboard', style: {color: '#ffff'}}}
       />
       <View
@@ -134,7 +146,7 @@ const Leaderboard = ({navigation}: IProps) => {
               </View>
             ))}
       </View>
-    </>
+    </TouchableOpacity>
   );
 };
 

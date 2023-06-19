@@ -83,6 +83,25 @@ project.ext.react = [
     enableHermes: true,  // clean and rebuild if changing
 ]
 
+project.ext {
+  set('react-native', [
+    versions: [
+      // Overriding Build/Android SDK Versions
+      android : [
+        minSdk    : 19,
+        targetSdk : 33,
+        compileSdk: 33,
+      ],
+
+      // Overriding Library SDK Versions
+      firebase: [
+        // Override Firebase SDK Version
+        bom           : "32.1.0"
+      ],
+    ],
+  ])
+}
+
 apply from: "../../node_modules/react-native/react.gradle"
 
 /**
